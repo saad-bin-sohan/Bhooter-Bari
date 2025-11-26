@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  background: radial-gradient(circle at 20% 20%, #ffffff, #eef1f6 35%), radial-gradient(circle at 80% 0%, #ffffff, #e8ebf3 45%), #f4f5f7;
+  color: #0f172a;
+}
+
+body {
+  min-height: 100vh;
+  background: transparent;
+  font-family: 'Manrope', 'Space Grotesk', system-ui, sans-serif;
+  color: #0f172a;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.neu-surface {
+  background: #f4f5f7;
+  box-shadow: 9px 9px 18px #d2d5dd, -9px -9px 18px #ffffff;
+  border-radius: 22px;
+}
+
+.neu-inset {
+  background: #f4f5f7;
+  box-shadow: inset 8px 8px 16px #d2d5dd, inset -8px -8px 16px #ffffff;
+  border-radius: 18px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd3e1;
+  border-radius: 12px;
+}

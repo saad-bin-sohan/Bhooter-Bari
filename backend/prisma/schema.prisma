@@ -1,0 +1,147 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoomType {
+  direct
+  group
+}
+
+enum MessageType {
+  text
+  attachment
+  system
+}
+
+model Room {
+  id                       String    @id @default(uuid())
+  slug                     String    @unique
+  type                     RoomType
+  name                     String?
+  passwordHash             String?
+  allowAttachments         Boolean   @default(true)
+  allowLinks               Boolean   @default(true)
+  requireApproval          Boolean   @default(false)
+  selfDestructModeEnabled  Boolean   @default(false)
+  burnAfterReadEnabled     Boolean   @default(false)
+  panicButtonEnabled       Boolean   @default(false)
+  screenshotWarningEnabled Boolean   @default(false)
+  tags                     String[]
+  creatorIp                String
+  creatorSecret            String
+  createdAt                DateTime  @default(now())
+  expiresAt                DateTime
+  deletedAt                DateTime?
+  rules                    String?
+  memberSessions           MemberSession[]
+  messages                 Message[]
+  attachments              Attachment[]
+  kickedIps                KickedIp[]
+  abuseReports             AbuseReport[]
+}
+
+model MemberSession {
+  id          String    @id @default(uuid())
+  roomId      String
+  room        Room      @relation(fields: [roomId], references: [id])
+  nickname    String
+  avatarSeed  String
+  ipAddress   String
+  joinedAt    DateTime  @default(now())
+  leftAt      DateTime?
+  isMuted     Boolean   @default(false)
+  isKicked    Boolean   @default(false)
+  isCreator   Boolean   @default(false)
+  messages    Message[] @relation("MessageSender")
+  reactions   MessageReaction[]
+  readReceipts MessageReadReceipt[]
+}
+
+model Message {
+  id                       String     @id @default(uuid())
+  roomId                   String
+  room                     Room       @relation(fields: [roomId], references: [id])
+  senderSessionId          String?
+  senderSession            MemberSession? @relation("MessageSender", fields: [senderSessionId], references: [id])
+  ciphertext               String
+  iv                       String
+  type                     MessageType
+  createdAt                DateTime   @default(now())
+  updatedAt                DateTime   @updatedAt
+  isDeleted                Boolean    @default(false)
+  threadParentId           String?
+  threadParent             Message?   @relation("Thread", fields: [threadParentId], references: [id])
+  threadChildren           Message[]  @relation("Thread")
+  selfDestructAt           DateTime?
+  burnAfterRead            Boolean    @default(false)
+  burnReadTargetSessionIds String[]
+  attachments              Attachment[]
+  reactions                MessageReaction[]
+  readReceipts             MessageReadReceipt[]
+}
+
+model Attachment {
+  id         String   @id @default(uuid())
+  roomId     String
+  room       Room     @relation(fields: [roomId], references: [id])
+  messageId  String
+  message    Message  @relation(fields: [messageId], references: [id])
+  filename   String
+  mimeType   String
+  sizeBytes  Int
+  iv         String
+  ciphertext Bytes
+  createdAt  DateTime @default(now())
+}
+
+model MessageReaction {
+  id               String         @id @default(uuid())
+  messageId        String
+  message          Message        @relation(fields: [messageId], references: [id])
+  memberSessionId  String
+  memberSession    MemberSession  @relation(fields: [memberSessionId], references: [id])
+  emoji            String
+  createdAt        DateTime       @default(now())
+}
+
+model MessageReadReceipt {
+  id              String        @id @default(uuid())
+  messageId       String
+  message         Message       @relation(fields: [messageId], references: [id])
+  memberSessionId String
+  memberSession   MemberSession @relation(fields: [memberSessionId], references: [id])
+  createdAt       DateTime      @default(now())
+
+  @@unique([messageId, memberSessionId], name: "messageId_memberSessionId")
+}
+
+model AbuseReport {
+  id                    String   @id @default(uuid())
+  roomId                String
+  room                  Room     @relation(fields: [roomId], references: [id])
+  reporterIp            String
+  targetMemberSessionId String?
+  reason                String
+  createdAt             DateTime @default(now())
+}
+
+model AnalyticsDaily {
+  id                      String   @id @default(uuid())
+  date                    DateTime @unique
+  roomsCreated            Int      @default(0)
+  messagesSent            Int      @default(0)
+  totalRoomLifetimeSeconds BigInt  @default(0)
+  abuseReportsCount       Int      @default(0)
+}
+
+model KickedIp {
+  id        String   @id @default(uuid())
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id])
+  ipAddress String
+}
