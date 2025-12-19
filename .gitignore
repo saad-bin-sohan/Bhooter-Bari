@@ -1,0 +1,62 @@
+############################################
+# General
+############################################
+.DS_Store
+.env
+.env.*
+!.env.example
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+############################################
+# Node.js
+############################################
+node_modules/
+.pnpm-store/
+
+############################################
+# TypeScript
+############################################
+*.tsbuildinfo
+
+############################################
+# Backend (Node + Prisma)
+############################################
+backend/node_modules/
+backend/dist/
+backend/build/
+
+# Prisma
+backend/prisma/dev.db
+backend/prisma/dev.db-journal
+
+############################################
+# Frontend (Next.js)
+############################################
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.vercel/
+
+############################################
+# Next.js cache & build artifacts
+############################################
+**/.next/**
+**/out/**
+**/build/**
+
+############################################
+# Editor / IDE
+############################################
+.vscode/
+.idea/
+*.swp
+*.swo
+
+############################################
+# OS-specific
+############################################
+Thumbs.db
