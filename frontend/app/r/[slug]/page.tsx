@@ -263,7 +263,7 @@ export default function RoomPage() {
     })
     socket.on('join_request_denied', () => {
       setJoinState('idle')
-      setPendingRequestId(null)
+      setPendingRequests([])
       setJoinError('Join request denied')
     })
     socket.on('join_request_approved', data => {

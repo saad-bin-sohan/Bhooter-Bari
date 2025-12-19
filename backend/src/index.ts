@@ -5,11 +5,12 @@ import cookieParser from 'cookie-parser'
 import multer from 'multer'
 import bcrypt from 'bcryptjs'
 import { Server, Socket } from 'socket.io'
-import { config } from './config'
-import { prisma } from './prisma'
-import { generateSlug, todayKey, randomId } from './utils'
-import { signMemberToken, verifyMemberToken, signAdminToken, verifyAdminToken, safeCompare } from './auth'
+import { config } from './config.js'
+import { prisma } from './prisma.js'
+import { generateSlug, todayKey, randomId } from './utils.js'
+import { signMemberToken, verifyMemberToken, signAdminToken, verifyAdminToken, safeCompare } from './auth.js'
 import { RoomType, MessageType } from '@prisma/client'
+import type { Prisma, MemberSession, MessageReadReceipt } from '@prisma/client'
 
 type PendingJoin = {
   id: string
@@ -34,6 +35,10 @@ type MemberAuthRequest = Request & { member?: ActiveSession }
 
 type AdminAuthRequest = Request & { admin?: boolean }
 
+type MessageWithRelations = Prisma.MessageGetPayload<{
+  include: { senderSession: true; attachments: true; reactions: true }
+}>
+
 const app = express()
 app.set('trust proxy', 1)
 app.use(cors({ origin: config.corsOrigin === '*' ? true : config.corsOrigin, credentials: true }))
@@ -51,11 +56,11 @@ const server = http.createServer(app)
 const io = new Server(server, { cors: { origin: config.corsOrigin === '*' ? true : config.corsOrigin, credentials: true } })
 const roomsNamespace = io.of('/rooms')
 
-const getIp = (req: Request) => {
+const getIp = (req: Request): string => {
   const forwarded = req.headers['x-forwarded-for']
-  if (typeof forwarded === 'string') return forwarded.split(',')[0].trim()
-  if (Array.isArray(forwarded)) return forwarded[0]
-  return req.ip
+  if (typeof forwarded === 'string' && forwarded.trim().length > 0) return forwarded.split(',')[0].trim()
+  if (Array.isArray(forwarded) && forwarded.length > 0 && forwarded[0]) return forwarded[0]
+  return req.ip || req.socket.remoteAddress || 'unknown'
 }
 
 const ensureRoomActive = async (roomId: string) => {
@@ -336,7 +341,7 @@ app.post('/rooms/:id/join-requests/:requestId/deny', requireMember, async (req: 
 app.get('/rooms/:id/messages', requireMember, async (req: MemberAuthRequest, res) => {
   if (!req.member) return res.status(401).json({ error: 'unauthorized' })
   if (req.member.roomId !== req.params.id) return res.status(403).json({ error: 'forbidden' })
-  const messages = await prisma.message.findMany({
+  const messages: MessageWithRelations[] = await prisma.message.findMany({
     where: { roomId: req.params.id },
     include: { senderSession: true, attachments: true, reactions: true },
     orderBy: { createdAt: 'asc' }
@@ -363,7 +368,7 @@ app.get('/rooms/:id/messages', requireMember, async (req: MemberAuthRequest, res
 app.get('/rooms/:id/members', requireMember, async (req: MemberAuthRequest, res) => {
   if (!req.member) return res.status(401).json({ error: 'unauthorized' })
   if (req.member.roomId !== req.params.id) return res.status(403).json({ error: 'forbidden' })
-  const list = await prisma.memberSession.findMany({ where: { roomId: req.params.id, isKicked: false }, orderBy: { joinedAt: 'asc' } })
+  const list: MemberSession[] = await prisma.memberSession.findMany({ where: { roomId: req.params.id, isKicked: false }, orderBy: { joinedAt: 'asc' } })
   const onlineMap = activeSessions.get(req.params.id)
   res.json(list.map(m => ({ id: m.id, nickname: m.nickname, avatarSeed: m.avatarSeed, isCreator: m.isCreator, isMuted: m.isMuted, online: onlineMap ? onlineMap.has(m.id) : false })))
 })
@@ -696,9 +701,10 @@ roomsNamespace.on('connection', socket => {
       if (!existing) await prisma.messageReadReceipt.create({ data: { messageId, memberSessionId: decoded.memberSessionId } })
     })
     if (message.burnAfterRead && message.burnReadTargetSessionIds.length > 0) {
-      const receipts = await prisma.messageReadReceipt.findMany({ where: { messageId } })
+      const receipts: MessageReadReceipt[] = await prisma.messageReadReceipt.findMany({ where: { messageId } })
       const seenIds = new Set(receipts.map(r => r.memberSessionId))
-      const allSeen = message.burnReadTargetSessionIds.every(id => seenIds.has(id))
+      const burnTargets: string[] = message.burnReadTargetSessionIds
+      const allSeen = burnTargets.every(id => seenIds.has(id))
       if (allSeen) {
         await prisma.message.delete({ where: { id: messageId } })
         roomsNamespace.to(message.roomId).emit('message_deleted', { id: messageId })

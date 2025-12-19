@@ -24,8 +24,8 @@ const config: Config = {
           '50%': { transform: 'translateY(-4px)' }
         },
         pulseSoft: {
-          '0%, 100%': { opacity: 0.4 },
-          '50%': { opacity: 1 }
+          '0%, 100%': { opacity: '0.4' },
+          '50%': { opacity: '1' }
         }
       },
       animation: {
