@@ -14,10 +14,10 @@ import { avatarFromSeed, randomAvatar } from '../../../lib/avatar'
 import { decryptFile, decryptText, encryptFile, encryptText, importRoomKey } from '../../../lib/crypto'
 import { apiBase } from '../../../lib/config'
 
-const relativeTime = (expiresAt?: string | Date, now?: number) => {
-  if (!expiresAt) return ''
+const relativeTime = (expiresAt?: string | Date, now?: number | null) => {
+  if (!expiresAt || now == null) return ''
   const target = new Date(expiresAt).getTime()
-  const diff = target - (now || Date.now())
+  const diff = target - now
   if (diff <= 0) return 'Expired'
   const minutes = Math.floor(diff / 60000)
   const seconds = Math.floor((diff % 60000) / 1000)
@@ -90,7 +90,7 @@ export default function RoomPage() {
   const [joinOpen, setJoinOpen] = useState(true)
   const [nickname, setNickname] = useState('')
   const [password, setPassword] = useState('')
-  const [avatarSeed, setAvatarSeed] = useState(randomAvatar())
+  const [avatarSeed, setAvatarSeed] = useState<string | null>(null)
   const [joinState, setJoinState] = useState<'idle' | 'pending' | 'joined'>('idle')
   const [joinError, setJoinError] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
@@ -108,7 +108,7 @@ export default function RoomPage() {
   const [mentionQuery, setMentionQuery] = useState('')
   const [reportReason, setReportReason] = useState('')
   const [timerMinutes, setTimerMinutes] = useState(15)
-  const [clock, setClock] = useState(Date.now())
+  const [clock, setClock] = useState<number | null>(null)
   const keyRef = useRef<CryptoKey | null>(null)
   const tokenRef = useRef<string | null>(null)
   const socketRef = useRef<Socket | null>(null)
@@ -132,6 +132,10 @@ export default function RoomPage() {
     }
     loadKey()
   }, [slug])
+
+  useEffect(() => {
+    setAvatarSeed(prev => prev ?? randomAvatar())
+  }, [])
 
   useEffect(() => {
     const fetchRoom = async () => {
@@ -206,12 +210,15 @@ export default function RoomPage() {
 
   useEffect(() => {
     if (!room?.expiresAt) return
-    const interval = setInterval(() => {
-      setClock(Date.now())
-      if (new Date(room.expiresAt).getTime() <= Date.now()) setExpired(true)
-    }, 1000)
+    const tick = () => {
+      const now = Date.now()
+      setClock(now)
+      if (new Date(room.expiresAt).getTime() <= now) setExpired(true)
+    }
+    tick()
+    const interval = setInterval(tick, 1000)
     return () => clearInterval(interval)
-  }, [room])
+  }, [room?.expiresAt])
 
   useEffect(() => {
     if (!room?.expiresAt) return
@@ -375,7 +382,9 @@ export default function RoomPage() {
     setJoinError('')
     setJoinState('pending')
     try {
-      const body: any = { nickname: nickname.trim(), avatarSeed }
+    const resolvedAvatarSeed = avatarSeed || randomAvatar()
+    if (!avatarSeed) setAvatarSeed(resolvedAvatarSeed)
+    const body: any = { nickname: nickname.trim(), avatarSeed: resolvedAvatarSeed }
       if (password) body.password = password
       if (creatorSecretRef.current) body.creatorSecret = creatorSecretRef.current
       const result = await apiRequest<any>(`/rooms/${room.id}/join`, { method: 'POST', body })
@@ -588,7 +597,7 @@ export default function RoomPage() {
     </main>
   )
 
-  const avatar = avatarFromSeed(avatarSeed)
+  const avatar = avatarSeed ? avatarFromSeed(avatarSeed) : { icon: 'USER', color: '#e5e7eb' }
 
   return (
     <>
