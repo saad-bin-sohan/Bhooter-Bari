@@ -1,18 +1,25 @@
 'use client'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { io, Socket } from 'socket.io-client'
-import { Card } from '../../../components/Card'
-import { Input } from '../../../components/Input'
-import { Button } from '../../../components/Button'
-import { Toggle } from '../../../components/Toggle'
-import { Badge } from '../../../components/Badge'
-import { Modal } from '../../../components/Modal'
+import { Card } from '../../../components/ui/Card'
+import { Input } from '../../../components/ui/Input'
+import { Textarea } from '../../../components/ui/Textarea'
+import { Button } from '../../../components/ui/Button'
+import { Toggle } from '../../../components/ui/Toggle'
+import { Badge } from '../../../components/ui/Badge'
+import { Modal } from '../../../components/ui/Modal'
+import { RoomHeader } from '../../../components/room/RoomHeader'
+import { MemberList } from '../../../components/room/MemberList'
+import { MessageBubble } from '../../../components/chat/MessageBubble'
+import { TypingIndicator } from '../../../components/chat/TypingIndicator'
 import { apiRequest } from '../../../lib/api'
 import { avatarFromSeed, randomAvatar } from '../../../lib/avatar'
 import { decryptFile, decryptText, encryptFile, encryptText, importRoomKey } from '../../../lib/crypto'
 import { apiBase } from '../../../lib/config'
+import { useToast } from '../../../lib/hooks/useToast'
+import { useUiState } from '../../../lib/hooks/useUiState'
+import { ArrowLeft, Link2, MessageCircleWarning } from 'lucide-react'
 
 const relativeTime = (expiresAt?: string | Date, now?: number | null) => {
   if (!expiresAt || now == null) return ''
@@ -82,6 +89,9 @@ export default function RoomPage() {
   const params = useParams()
   const slug = params?.slug as string
   const router = useRouter()
+  const pushToast = useToast(state => state.push)
+  const isSidebarOpen = useUiState(state => state.isSidebarOpen)
+  const setSidebarOpen = useUiState(state => state.setSidebarOpen)
   const [room, setRoom] = useState<RoomMeta | null>(null)
   const [roomKey, setRoomKey] = useState<CryptoKey | null>(null)
   const [memberToken, setMemberToken] = useState<string | null>(null)
@@ -101,7 +111,6 @@ export default function RoomPage() {
   const [allowLinks, setAllowLinks] = useState(true)
   const [allowAttachments, setAllowAttachments] = useState(true)
   const [expired, setExpired] = useState(false)
-  const [screenshotAlert, setScreenshotAlert] = useState('')
   const [editMessage, setEditMessage] = useState<Message | null>(null)
   const [editText, setEditText] = useState('')
   const [replyTo, setReplyTo] = useState<Message | null>(null)
@@ -170,11 +179,14 @@ export default function RoomPage() {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase().includes('printscreen')) setScreenshotAlert('Screenshots are not safe here.')
+      if (!room?.screenshotWarningEnabled) return
+      if (e.key.toLowerCase().includes('printscreen')) {
+        pushToast({ title: 'Screenshot detected', message: 'Screenshots are not safe here.', variant: 'warning' })
+      }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [])
+  }, [room?.screenshotWarningEnabled, pushToast])
 
   useEffect(() => {
     if (!room || !socketRef.current || !tokenRef.current) return
@@ -589,288 +601,249 @@ export default function RoomPage() {
 
   if (expired) return (
     <main className="min-h-screen flex items-center justify-center px-6">
-      <Card className="max-w-md w-full text-center space-y-4">
-        <h2 className="text-2xl font-bold">Room unavailable</h2>
-        <p className="text-[#6b7280]">This room expired or was deleted.</p>
+      <Card className="max-w-md w-full space-y-4 text-center">
+        <Badge variant="warning">Room expired</Badge>
+        <h2 className="text-2xl font-semibold">Room unavailable</h2>
+        <p className="text-muted">This room expired or was deleted.</p>
         <Button onClick={() => router.push('/')}>Go home</Button>
       </Card>
     </main>
   )
 
-  const avatar = avatarSeed ? avatarFromSeed(avatarSeed) : { icon: 'USER', color: '#e5e7eb' }
+  const avatar = avatarSeed ? avatarFromSeed(avatarSeed) : { icon: 'USER', color: '#94a3b8' }
+
+  const sidebarContent = (
+    <div className="space-y-4">
+      <Card className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Members</h3>
+          <Badge>{members.filter(m => m.online).length} online</Badge>
+        </div>
+        <MemberList members={members} isCreator={isCreator} memberSessionId={memberSessionId} onMute={muteMember} onKick={kickMember} />
+      </Card>
+      {isCreator && (
+        <Card className="space-y-3">
+          <h3 className="text-lg font-semibold">Room controls</h3>
+          <Toggle label="Allow attachments" value={allowAttachments} onChange={val => toggleSetting('allowAttachments', val)} />
+          <Toggle label="Allow links" value={allowLinks} onChange={val => toggleSetting('allowLinks', val)} />
+          <Toggle label="Burn after read" value={!!room?.burnAfterReadEnabled} onChange={val => toggleSetting('burnAfterReadEnabled', val)} />
+          <Toggle label="Self-destruct messages" value={!!room?.selfDestructModeEnabled} onChange={val => toggleSetting('selfDestructModeEnabled', val)} />
+          <Toggle label="Panic button" value={!!room?.panicButtonEnabled} onChange={val => toggleSetting('panicButtonEnabled', val)} />
+          <Toggle label="Screenshot warning" value={!!room?.screenshotWarningEnabled} onChange={val => toggleSetting('screenshotWarningEnabled', val)} />
+          <Button variant="secondary" onClick={deleteRoom}>Delete room now</Button>
+        </Card>
+      )}
+      {isCreator && (
+        <Card className="space-y-3">
+          <h3 className="text-lg font-semibold">Timer</h3>
+          <div className="flex items-center gap-3">
+            <Input type="number" min={1} max={60} value={timerMinutes} onChange={e => setTimerMinutes(Number(e.target.value))} />
+            <Button onClick={updateTimer}>Update</Button>
+          </div>
+        </Card>
+      )}
+      {isCreator && pendingRequests.length > 0 && (
+        <Card className="space-y-2">
+          <h3 className="text-lg font-semibold">Join requests</h3>
+          {pendingRequests.map(r => (
+            <div key={r.requestId} className="flex items-center justify-between rounded-2xl border border-border/60 bg-surface px-3 py-3 shadow-soft">
+              <div>
+                <div className="text-sm font-semibold">{r.nickname}</div>
+                <div className="text-xs text-muted">Awaiting approval</div>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="secondary" size="sm" onClick={() => approveRequest(r.requestId)}>Approve</Button>
+                <Button variant="ghost" size="sm" onClick={() => denyRequest(r.requestId)}>Deny</Button>
+              </div>
+            </div>
+          ))}
+        </Card>
+      )}
+      <Card className="space-y-3">
+        <h3 className="text-lg font-semibold">Report</h3>
+        <Textarea
+          className="min-h-[120px]"
+          placeholder="Share concerns or abuse details"
+          value={reportReason}
+          onChange={e => setReportReason(e.target.value)}
+        />
+        <Button onClick={submitReport}>Report abuse</Button>
+      </Card>
+    </div>
+  )
 
   return (
     <>
-      <main className="min-h-screen grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 px-4 md:px-8 py-8">
-        <Modal open={joinOpen}>
+      <Modal open={joinOpen}>
         <div className="space-y-4">
-          <h3 className="text-2xl font-bold">Join room</h3>
-          <p className="text-[#6b7280]">{room?.name || 'Invite-only room'}</p>
-          <div className="flex items-center gap-3">
-            <div className="w-14 h-14 rounded-full shadow-neu flex items-center justify-center text-2xl" style={{ background: avatar.color }}>
-              <span>{avatar.icon}</span>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="text-2xl font-semibold">Join room</h3>
+              <p className="text-sm text-muted">{room?.name || 'Invite-only room'}</p>
             </div>
-            <div className="space-y-2 flex-1">
+            <Badge>{room?.type === 'direct' ? '1-1' : 'Group'}</Badge>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/60 bg-surface2 px-3 py-3">
+            <div className="h-14 w-14 rounded-full flex items-center justify-center text-lg font-semibold text-white" style={{ background: avatar.color }}>
+              {avatar.icon}
+            </div>
+            <div className="flex-1 space-y-2">
               <Input placeholder="Nickname" value={nickname} onChange={e => setNickname(e.target.value)} />
-              <div className="flex gap-2">
-                <Button type="button" variant="ghost" onClick={() => setAvatarSeed(randomAvatar())}>Shuffle avatar</Button>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="ghost" size="sm" onClick={() => setAvatarSeed(randomAvatar())}>Shuffle avatar</Button>
                 {room?.hasPassword && <Input placeholder="Room password" type="password" value={password} onChange={e => setPassword(e.target.value)} />}
               </div>
             </div>
           </div>
-          {room?.screenshotWarningEnabled && <div className="text-sm text-red-500">Screenshot safety is not guaranteed.</div>}
+          {room?.screenshotWarningEnabled && (
+            <div className="flex items-center gap-2 rounded-2xl border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning-foreground">
+              <MessageCircleWarning className="h-4 w-4" />
+              Screenshot safety is not guaranteed.
+            </div>
+          )}
           <div className="flex items-center justify-between">
-            <div className="text-sm text-[#6b7280]">Expires in {relativeTime(room?.expiresAt, clock)}</div>
-            <Button onClick={handleJoin} disabled={joinState === 'pending'}>{joinState === 'pending' ? 'Waiting...' : 'Join'}</Button>
+            <div className="text-sm text-muted">Expires in {relativeTime(room?.expiresAt, clock)}</div>
+            <Button onClick={handleJoin} disabled={joinState === 'pending'}>
+              {joinState === 'pending' ? 'Waiting...' : 'Join'}
+            </Button>
           </div>
-          {joinState === 'pending' && <div className="text-sm text-[#6b7280]">Awaiting host approval if required.</div>}
-          {joinError && <div className="text-sm text-red-500">{joinError}</div>}
+          {joinState === 'pending' && <div className="text-sm text-muted">Awaiting host approval if required.</div>}
+          {joinError && <div className="rounded-2xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{joinError}</div>}
         </div>
       </Modal>
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <div className="flex items-center gap-3">
-              <h2 className="text-3xl font-bold">{room?.name || 'Ghost room'}</h2>
-              <Badge>{room?.type === 'direct' ? '1-1' : 'Group'}</Badge>
-              {room?.tags?.length ? room.tags.map(tag => <Badge key={tag}>{tag}</Badge>) : null}
-            </div>
-            <p className="text-sm text-[#6b7280]">Expires in {relativeTime(room?.expiresAt, clock)}</p>
-          </div>
-          <div className="flex gap-2 items-center">
-            <Link href="/create" className="text-sm underline-offset-4 hover:underline">New room</Link>
-            <Badge>{room?.allowAttachments ? 'Attachments on' : 'Attachments off'}</Badge>
-          </div>
-        </div>
-        <Card className="text-sm text-[#4b5563]">
-          Rooms expire within sixty minutes. Messages and attachments are hard-deleted at expiry or when the host deletes the room. Only nicknames and avatars are visible; IPs stay server-side for safety. Keep your key safe in the URL hash.
-        </Card>
-        <Card className="h-[65vh] overflow-y-auto space-y-3 p-6">
-          {messages.map(msg => {
-            const mine = msg.senderSessionId === memberSessionId
-            const avatarData = msg.sender?.avatarSeed ? avatarFromSeed(msg.sender.avatarSeed) : { icon: 'USER', color: '#e5e7eb' }
-            const parent = messages.find(m => m.id === msg.threadParentId)
-            let displayText = msg.plaintext
-            if (msg.type === 'attachment') {
-              try {
-                const meta = JSON.parse(msg.plaintext || '{}')
-                displayText = meta.name ? `Encrypted file: ${meta.name}` : 'Encrypted attachment'
-              } catch (e) {
-                displayText = 'Encrypted attachment'
-              }
-            }
-            return (
-              <div key={msg.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-xl w-fit ${mine ? 'ml-10' : 'mr-10'}`}>
-                  <div className={`rounded-2xl p-4 shadow-neu ${mine ? 'bg-gradient-to-br from-[#6c7ae0] to-[#8ea2ff] text-white' : 'bg-[#f4f5f7]'}`}>
-                    <div className="flex items-center gap-2 mb-1 text-sm">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: avatarData.color }}>
-                        <span>{avatarData.icon}</span>
-                      </div>
-                      <span className="font-semibold">{msg.sender?.nickname || 'System'}</span>
-                      {msg.sender?.isCreator && <Badge>Host</Badge>}
-                      <span className="text-xs text-[#e5e7eb]/70">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
-                    {parent && (
-                      <div className="text-xs text-[#6b7280] mb-2 bg-white/60 rounded-lg px-3 py-2">
-                        Replying to {parent.sender?.nickname || 'message'}: {(parent.plaintext || '').slice(0, 60)}
-                      </div>
-                    )}
-                    <div className="whitespace-pre-wrap leading-relaxed">{displayText}</div>
-                    {msg.attachments?.length ? (
-                      <div className="mt-2 space-y-2">
-                        {msg.attachments.map(att => (
-                          <button
-                            key={att.id}
-                            onClick={() => downloadAttachment(att)}
-                            className="w-full text-left px-4 py-3 rounded-xl shadow-neu bg-white flex justify-between"
-                          >
-                            <span>{att.filename}</span>
-                            <span className="text-sm text-[#6b7280]">{(att.sizeBytes / 1024).toFixed(1)} KB</span>
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
-                    {msg.reactions && msg.reactions.length > 0 && (
-                      <div className="mt-2 flex gap-2">
-                        {msg.reactions.map(r => (
-                          <span key={r.id} className="px-2 py-1 rounded-full bg-white/50 text-sm">{r.emoji}</span>
-                        ))}
-                      </div>
-                    )}
-                    <div className="mt-3 flex flex-wrap gap-2 text-sm text-[#0f172a]">
-                      {['👍', '😂', '❤️'].map(emoji => (
-                        <button
-                          key={emoji}
-                          onClick={() => addReaction(msg.id, emoji)}
-                          className="px-3 py-1 rounded-full bg-white/60 shadow-neuSm"
-                        >
-                          {emoji}
-                        </button>
-                      ))}
-                      <button onClick={() => setReplyTo(msg)} className="px-3 py-1 rounded-full bg-white/60 shadow-neuSm">Reply</button>
-                      {(mine || isCreator) && <button onClick={() => beginEdit(msg)} className="px-3 py-1 rounded-full bg-white/60 shadow-neuSm">Edit</button>}
-                      {(mine || isCreator) && <button onClick={() => deleteMessage(msg.id)} className="px-3 py-1 rounded-full bg-white/60 shadow-neuSm">Delete</button>}
-                    </div>
-                  </div>
-                </div>
+
+      <main className="min-h-screen px-4 py-8 md:px-8">
+        <div className="mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <section className="space-y-4">
+            <RoomHeader
+              title={room?.name || 'Ghost room'}
+              subtitle={`Expires in ${relativeTime(room?.expiresAt, clock)}`}
+              typeLabel={room?.type === 'direct' ? '1-1' : 'Group'}
+              tags={room?.tags || []}
+              allowAttachments={!!room?.allowAttachments}
+              onToggleSidebar={() => setSidebarOpen(true)}
+            />
+            <Card variant="glass" className="space-y-3 text-sm text-muted">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge>End-to-end encrypted</Badge>
+                {room?.requireApproval && <Badge variant="warning">Approval required</Badge>}
+                {room?.burnAfterReadEnabled && <Badge variant="accent">Burn after read</Badge>}
+                {room?.selfDestructModeEnabled && <Badge variant="danger">Self-destruct</Badge>}
               </div>
-            )
-          })}
-          {typingNames.length > 0 && (
-            <div className="text-sm text-[#6b7280] animate-pulseSoft">{typingNames.join(', ')} typing…</div>
-          )}
-        </Card>
-        <Card className="space-y-3 relative">
-          {replyTo && (
-            <div className="flex items-center justify-between text-sm text-[#6b7280] rounded-xl px-4 py-2 shadow-neu">
-              <span>Replying to {replyTo.sender?.nickname || 'message'}: {replyTo.plaintext?.slice(0, 80)}</span>
-              <Button variant="ghost" onClick={() => setReplyTo(null)}>Clear</Button>
-            </div>
-          )}
-          <div className="flex flex-col md:flex-row gap-3 items-center">
-            <div className="flex-1 relative">
-              <Input
-                value={input}
-                onChange={e => {
-                  setInput(e.target.value)
-                  startTyping()
-                }}
-                placeholder={allowLinks ? 'Type a message' : 'Links are disabled'}
-                disabled={!allowLinks}
-              />
-              {mentionQuery && mentionCandidates.length > 0 && (
-                <div className="absolute left-0 right-0 top-full mt-2 rounded-xl shadow-neu bg-white z-20">
-                  {mentionCandidates.map(member => (
-                    <button
-                      key={member.id}
-                      onClick={() => insertMention(member.nickname)}
-                      className="w-full text-left px-4 py-2 hover:bg-[#eef1f6] rounded-xl"
-                    >
-                      @{member.nickname}
-                    </button>
-                  ))}
+              <p>
+                Rooms expire within sixty minutes. Messages and attachments are hard-deleted at expiry or when the host deletes the room. Only nicknames and avatars are visible; IPs stay server-side for safety. Keep your key safe in the URL hash.
+              </p>
+            </Card>
+
+            <Card className="h-[60vh] space-y-4 overflow-y-auto p-6">
+              {messages.map(msg => {
+                const mine = msg.senderSessionId === memberSessionId
+                const parent = messages.find(m => m.id === msg.threadParentId)
+                return (
+                  <MessageBubble
+                    key={msg.id}
+                    message={msg}
+                    mine={mine}
+                    isCreator={isCreator}
+                    parent={parent}
+                    onReact={emoji => addReaction(msg.id, emoji)}
+                    onReply={() => setReplyTo(msg)}
+                    onEdit={() => beginEdit(msg)}
+                    onDelete={() => deleteMessage(msg.id)}
+                    onDownload={downloadAttachment}
+                  />
+                )
+              })}
+              <TypingIndicator names={typingNames} />
+            </Card>
+
+            <Card className="space-y-3 relative">
+              {replyTo && (
+                <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-surface2 px-3 py-2 text-xs text-muted">
+                  <span>Replying to {replyTo.sender?.nickname || 'message'}: {replyTo.plaintext?.slice(0, 80)}</span>
+                  <Button variant="ghost" size="sm" onClick={() => setReplyTo(null)}>Clear</Button>
                 </div>
               )}
-            </div>
-            <Button onClick={sendMessage}>Send</Button>
-            <label className="cursor-pointer px-4 py-3 rounded-xl shadow-neu bg-[#f4f5f7]">
-              Attach
-              <input
-                type="file"
-                className="hidden"
-                onChange={e => {
-                  const file = e.target.files?.[0]
-                  if (file) handleAttachment(file)
-                }}
-                disabled={!allowAttachments}
-              />
-            </label>
-            {room?.panicButtonEnabled && <Button variant="ghost" onClick={panic}>Panic</Button>}
-          </div>
-        </Card>
-        {room?.rules && (
-          <Card>
-            <p className="text-sm text-[#6b7280] whitespace-pre-wrap">{room.rules}</p>
-          </Card>
-        )}
-      </div>
-      <div className="space-y-4">
-        <Card className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold">Members</h3>
-            <Badge>{members.filter(m => m.online).length} online</Badge>
-          </div>
-          <div className="space-y-2">
-            {members.map(member => {
-              const avatarData = avatarFromSeed(member.avatarSeed)
-              return (
-                <div key={member.id} className="flex items-center justify-between p-3 rounded-xl shadow-neu">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: avatarData.color }}>
-                      <span>{avatarData.icon}</span>
-                    </div>
-                    <div>
-                      <div className="font-semibold flex items-center gap-2">
-                        {member.nickname}
-                        {member.isCreator && <Badge>Host</Badge>}
-                        {member.isMuted && <Badge>Muted</Badge>}
-                      </div>
-                      <div className="text-xs text-[#6b7280]">{member.online ? 'Online' : 'Offline'}</div>
-                    </div>
-                  </div>
-                  {isCreator && member.id !== memberSessionId && (
-                    <div className="flex gap-2">
-                      <Button variant="ghost" onClick={() => muteMember(member.id, !member.isMuted)}>{member.isMuted ? 'Unmute' : 'Mute'}</Button>
-                      <Button variant="ghost" onClick={() => kickMember(member.id)}>Kick</Button>
+              <div className="space-y-3">
+                <div className="relative">
+                  <Input
+                    value={input}
+                    onChange={e => {
+                      setInput(e.target.value)
+                      startTyping()
+                    }}
+                    placeholder={allowLinks ? 'Type a message' : 'Links are disabled'}
+                    disabled={!allowLinks}
+                  />
+                  {mentionQuery && mentionCandidates.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-2xl border border-border/60 bg-surface p-2 shadow-card">
+                      {mentionCandidates.map(member => (
+                        <button
+                          key={member.id}
+                          onClick={() => insertMention(member.nickname)}
+                          className="w-full rounded-xl px-3 py-2 text-left text-sm text-muted hover:bg-surface2 hover:text-foreground"
+                        >
+                          @{member.nickname}
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
-              )
-            })}
-          </div>
-        </Card>
-        {isCreator && (
-          <Card className="space-y-3">
-            <h3 className="text-xl font-semibold">Room controls</h3>
-            <Toggle label="Allow attachments" value={allowAttachments} onChange={val => toggleSetting('allowAttachments', val)} />
-            <Toggle label="Allow links" value={allowLinks} onChange={val => toggleSetting('allowLinks', val)} />
-            <Toggle label="Burn after read" value={!!room?.burnAfterReadEnabled} onChange={val => toggleSetting('burnAfterReadEnabled', val)} />
-            <Toggle label="Self-destruct messages" value={!!room?.selfDestructModeEnabled} onChange={val => toggleSetting('selfDestructModeEnabled', val)} />
-            <Toggle label="Panic button" value={!!room?.panicButtonEnabled} onChange={val => toggleSetting('panicButtonEnabled', val)} />
-            <Toggle label="Screenshot warning" value={!!room?.screenshotWarningEnabled} onChange={val => toggleSetting('screenshotWarningEnabled', val)} />
-            <Button variant="secondary" onClick={deleteRoom}>Delete room now</Button>
-          </Card>
-        )}
-        {isCreator && (
-          <Card className="space-y-3">
-            <h3 className="text-xl font-semibold">Timer</h3>
-            <div className="flex items-center gap-3">
-              <Input type="number" min={1} max={60} value={timerMinutes} onChange={e => setTimerMinutes(Number(e.target.value))} />
-              <Button onClick={updateTimer}>Update</Button>
-            </div>
-          </Card>
-        )}
-        {isCreator && pendingRequests.length > 0 && (
-          <Card className="space-y-2">
-            <h3 className="text-xl font-semibold">Join requests</h3>
-            {pendingRequests.map(r => (
-              <div key={r.requestId} className="flex items-center justify-between rounded-xl p-3 shadow-neu">
-                <div>
-                  <div className="font-semibold">{r.nickname}</div>
-                  <div className="text-xs text-[#6b7280]">Awaiting approval</div>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="secondary" onClick={() => approveRequest(r.requestId)}>Approve</Button>
-                  <Button variant="ghost" onClick={() => denyRequest(r.requestId)}>Deny</Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button onClick={sendMessage}>Send</Button>
+                  <label className={`inline-flex cursor-pointer items-center gap-2 rounded-full border border-border/70 bg-surface2 px-4 py-2 text-sm text-muted transition hover:text-foreground ${!allowAttachments ? 'pointer-events-none opacity-60' : ''}`}>
+                    <Link2 className="h-4 w-4" /> Attach
+                    <input
+                      type="file"
+                      className="hidden"
+                      onChange={e => {
+                        const file = e.target.files?.[0]
+                        if (file) handleAttachment(file)
+                      }}
+                      disabled={!allowAttachments}
+                    />
+                  </label>
+                  {room?.panicButtonEnabled && <Button variant="danger" onClick={panic}>Panic</Button>}
                 </div>
               </div>
-            ))}
-          </Card>
-        )}
-        <Card className="space-y-3">
-          <h3 className="text-xl font-semibold">Report</h3>
-          <textarea
-            className="w-full rounded-xl px-4 py-3 bg-[#f4f5f7] shadow-neuInset focus:outline-none focus:ring-2 focus:ring-[#6c7ae0]"
-            placeholder="Share concerns or abuse details"
-            value={reportReason}
-            onChange={e => setReportReason(e.target.value)}
-          />
-          <Button onClick={submitReport}>Report abuse</Button>
-        </Card>
-        {screenshotAlert && <Card className="text-red-500 text-sm">{screenshotAlert}</Card>}
-      </div>
-    </main>
-    <Modal open={!!editMessage} onClose={() => setEditMessage(null)}>
-      <div className="space-y-3">
-        <h3 className="text-xl font-semibold">Edit message</h3>
-        <Input value={editText} onChange={e => setEditText(e.target.value)} />
-        <div className="flex gap-2">
-          <Button onClick={saveEdit}>Save</Button>
-          <Button variant="ghost" onClick={() => setEditMessage(null)}>Cancel</Button>
+            </Card>
+
+            {room?.rules && (
+              <Card>
+                <p className="text-sm text-muted whitespace-pre-wrap">{room.rules}</p>
+              </Card>
+            )}
+          </section>
+
+          <aside className="hidden lg:block">{sidebarContent}</aside>
         </div>
-      </div>
-    </Modal>
+      </main>
+
+      {isSidebarOpen && (
+        <div className="fixed inset-0 z-40 flex lg:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
+          <div className="relative ml-auto h-full w-full max-w-sm overflow-y-auto bg-surface p-4 shadow-card">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Room details</h3>
+              <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(false)}>
+                <ArrowLeft className="h-4 w-4" /> Close
+              </Button>
+            </div>
+            {sidebarContent}
+          </div>
+        </div>
+      )}
+
+      <Modal open={!!editMessage} onClose={() => setEditMessage(null)}>
+        <div className="space-y-3">
+          <h3 className="text-xl font-semibold">Edit message</h3>
+          <Input value={editText} onChange={e => setEditText(e.target.value)} />
+          <div className="flex gap-2">
+            <Button onClick={saveEdit}>Save</Button>
+            <Button variant="ghost" onClick={() => setEditMessage(null)}>Cancel</Button>
+          </div>
+        </div>
+      </Modal>
     </>
   )
 }

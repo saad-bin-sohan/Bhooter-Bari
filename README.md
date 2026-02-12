@@ -29,6 +29,21 @@ Anonymous, invite-only rooms with end-to-end encryption, ephemeral timers up to 
 3. Run dev server: `npm run dev`
 4. Build/start: `npm run build && npm start`
 
+## Frontend design system (2026 refresh)
+- Theme tokens live in `frontend/app/globals.css` (CSS variables) and `frontend/tailwind.config.ts` (semantic colors, shadows, typography).
+- Dark mode is class-based and stored in `localStorage` (`bb-theme`). Toggle via the global UI switch (`components/ui/ThemeToggle.tsx`).
+- Core UI primitives live in `frontend/components/ui/` (Button, Input, Card, Badge, Modal, Toggle, Tabs, Toast, etc.).
+- Chat/room UI is broken into focused components under `frontend/components/chat/` and `frontend/components/room/`.
+
+## Theme customization
+- Update color tokens in `frontend/app/globals.css` under `:root` and `.dark`.
+- Expand tokens in `frontend/tailwind.config.ts` if you add new semantic colors.
+- Adjust typography by changing the Google fonts in `frontend/app/layout.tsx`.
+
+## New frontend dependencies
+- `lucide-react` for iconography.
+- `@tailwindcss/forms` and `@tailwindcss/typography` for enhanced form and text styling.
+
 ## Deployment
 - Backend (Render): create a Web Service, set environment variables above, build command `npm run build`, start command `npm start`, make sure Postgres is provisioned and `DATABASE_URL` set. No Docker needed.
 - Frontend (Vercel): set `NEXT_PUBLIC_API_BASE_URL` to the Render backend URL, deploy directly from the `frontend` folder.

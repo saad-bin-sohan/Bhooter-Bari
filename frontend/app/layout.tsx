@@ -1,19 +1,36 @@
 import type { Metadata } from 'next'
 import { ReactNode } from 'react'
-import { Manrope } from 'next/font/google'
+import { Space_Grotesk, Plus_Jakarta_Sans } from 'next/font/google'
 import './globals.css'
+import { ThemeProvider } from '../components/ui/ThemeProvider'
+import { Toaster } from '../components/ui/Toast'
 
-const manrope = Manrope({ subsets: ['latin'], display: 'swap' })
+const display = Space_Grotesk({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-display'
+})
+
+const sans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-sans'
+})
 
 export const metadata: Metadata = {
-  title: 'Bhooter Bari',
-  description: 'Anonymous ephemeral E2EE rooms'
+  title: 'Bhooter Bari (Bhooter Bari)',
+  description: 'Anonymous, ephemeral, end-to-end encrypted rooms.'
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <body className={`${manrope.className} bg-transparent`}>{children}</body>
+    <html lang="en" className={`${display.variable} ${sans.variable} dark`} suppressHydrationWarning>
+      <body className="min-h-screen bg-transparent text-foreground antialiased">
+        <ThemeProvider>
+          {children}
+          <Toaster />
+        </ThemeProvider>
+      </body>
     </html>
   )
 }
