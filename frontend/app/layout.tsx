@@ -18,7 +18,7 @@ const sans = Plus_Jakarta_Sans({
 })
 
 export const metadata: Metadata = {
-  title: 'Bhooter Bari (Bhooter Bari)',
+  title: 'Bhooter Bari',
   description: 'Anonymous, ephemeral, end-to-end encrypted rooms.'
 }
 

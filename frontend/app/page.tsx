@@ -14,7 +14,7 @@ export default function HomePage() {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-12">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-lg font-semibold text-primary">G</div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-lg font-semibold text-primary">B</div>
             <div>
               <p className="text-sm font-semibold">Bhooter Bari</p>
               <p className="text-xs text-muted">Bhooter Bari • Encrypted chat rooms</p>
