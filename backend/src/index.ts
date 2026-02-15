@@ -8,6 +8,7 @@ import { Server, Socket } from 'socket.io'
 import { config } from './config.js'
 import { prisma } from './prisma.js'
 import { generateSlug, todayKey, randomId } from './utils.js'
+import { parseOptionalPositiveSeconds, toNonNegativeBigIntFromSeconds, toNonNegativeWholeSecondsFromMs } from './time.js'
 import { signMemberToken, verifyMemberToken, signAdminToken, verifyAdminToken, safeCompare } from './auth.js'
 import { RoomType, MessageType } from '@prisma/client'
 import type { Prisma, MemberSession, MessageReadReceipt } from '@prisma/client'
@@ -432,7 +433,8 @@ app.post('/rooms/:id/attachments', requireMember, upload.single('file'), async (
   const { iv, messageCiphertext, messageIv, threadParentId, burnAfterRead, selfDestructSeconds } = req.body
   if (!iv || !messageCiphertext || !messageIv) return res.status(400).json({ error: 'missing_fields' })
   const now = new Date()
-  const selfDestructAt = selfDestructSeconds ? new Date(now.getTime() + Number(selfDestructSeconds) * 1000) : null
+  const parsedSelfDestructSeconds = parseOptionalPositiveSeconds(selfDestructSeconds)
+  const selfDestructAt = parsedSelfDestructSeconds ? new Date(now.getTime() + parsedSelfDestructSeconds * 1000) : null
   const burnTargetIds = activeSessions.get(room.id)?.keys() ? Array.from(activeSessions.get(room.id)!.keys()) : []
   const message = await prisma.message.create({
     data: {
@@ -588,7 +590,8 @@ roomsNamespace.on('connection', socket => {
     const session = await prisma.memberSession.findUnique({ where: { id: decoded.memberSessionId } })
     if (!session || session.isKicked || session.isMuted) return
     const now = new Date()
-    const selfDestructAt = selfDestructSeconds ? new Date(now.getTime() + Number(selfDestructSeconds) * 1000) : null
+    const parsedSelfDestructSeconds = parseOptionalPositiveSeconds(selfDestructSeconds)
+    const selfDestructAt = parsedSelfDestructSeconds ? new Date(now.getTime() + parsedSelfDestructSeconds * 1000) : null
     const burnTargetIds = activeSessions.get(room.id)?.keys() ? Array.from(activeSessions.get(room.id)!.keys()) : []
     const message = await prisma.message.create({
       data: {
@@ -787,42 +790,64 @@ roomsNamespace.on('connection', socket => {
 const cleanupExpiredRooms = async () => {
   const rooms = await prisma.room.findMany({ where: { OR: [{ expiresAt: { lte: new Date() } }, { deletedAt: { not: null } }] } })
   for (const room of rooms) {
-    roomsNamespace.to(room.id).emit('room_deleted', { roomId: room.id })
-    const lifetimeSeconds = Math.max(0, Math.floor(((room.deletedAt || room.expiresAt || new Date()) as Date).getTime() - room.createdAt.getTime()) / 1000)
-    await prisma.analyticsDaily.upsert({
-      where: { date: todayKey() },
-      create: { date: todayKey(), totalRoomLifetimeSeconds: BigInt(lifetimeSeconds) },
-      update: { totalRoomLifetimeSeconds: { increment: BigInt(lifetimeSeconds) } }
-    })
-    await prisma.messageReaction.deleteMany({ where: { message: { roomId: room.id } } })
-    await prisma.messageReadReceipt.deleteMany({ where: { message: { roomId: room.id } } })
-    await prisma.attachment.deleteMany({ where: { roomId: room.id } })
-    await prisma.message.deleteMany({ where: { roomId: room.id } })
-    await prisma.memberSession.deleteMany({ where: { roomId: room.id } })
-    await prisma.kickedIp.deleteMany({ where: { roomId: room.id } })
-    await prisma.abuseReport.deleteMany({ where: { roomId: room.id } })
-    await prisma.room.delete({ where: { id: room.id } })
-    activeSessions.delete(room.id)
-    const pendingRoom = pendingJoins.get(room.id)
-    if (pendingRoom) {
-      pendingRoom.forEach((pending, id) => {
-        const socket = pendingSockets.get(id)
-        if (socket) socket.disconnect(true)
-        pendingSockets.delete(id)
+    try {
+      roomsNamespace.to(room.id).emit('room_deleted', { roomId: room.id })
+      const roomEndedAt = room.deletedAt || room.expiresAt || new Date()
+      const lifetimeMs = roomEndedAt.getTime() - room.createdAt.getTime()
+      const lifetimeSeconds = toNonNegativeWholeSecondsFromMs(lifetimeMs)
+      const lifetimeSecondsBigInt = toNonNegativeBigIntFromSeconds(lifetimeSeconds)
+      const today = todayKey()
+      await prisma.analyticsDaily.upsert({
+        where: { date: today },
+        create: { date: today, totalRoomLifetimeSeconds: lifetimeSecondsBigInt },
+        update: { totalRoomLifetimeSeconds: { increment: lifetimeSecondsBigInt } }
       })
+      await prisma.messageReaction.deleteMany({ where: { message: { roomId: room.id } } })
+      await prisma.messageReadReceipt.deleteMany({ where: { message: { roomId: room.id } } })
+      await prisma.attachment.deleteMany({ where: { roomId: room.id } })
+      await prisma.message.deleteMany({ where: { roomId: room.id } })
+      await prisma.memberSession.deleteMany({ where: { roomId: room.id } })
+      await prisma.kickedIp.deleteMany({ where: { roomId: room.id } })
+      await prisma.abuseReport.deleteMany({ where: { roomId: room.id } })
+      await prisma.room.delete({ where: { id: room.id } })
+      activeSessions.delete(room.id)
+      const pendingRoom = pendingJoins.get(room.id)
+      if (pendingRoom) {
+        pendingRoom.forEach((pending, id) => {
+          const socket = pendingSockets.get(id)
+          if (socket) socket.disconnect(true)
+          pendingSockets.delete(id)
+        })
+      }
+      pendingJoins.delete(room.id)
+    } catch (error) {
+      console.error('Failed to cleanup room', { roomId: room.id, error })
     }
-    pendingJoins.delete(room.id)
   }
   const destructMessages = await prisma.message.findMany({ where: { selfDestructAt: { lte: new Date() } } })
   for (const msg of destructMessages) {
-    await prisma.messageReaction.deleteMany({ where: { messageId: msg.id } })
-    await prisma.attachment.deleteMany({ where: { messageId: msg.id } })
-    await prisma.message.delete({ where: { id: msg.id } })
-    roomsNamespace.to(msg.roomId).emit('message_deleted', { id: msg.id })
+    try {
+      await prisma.messageReaction.deleteMany({ where: { messageId: msg.id } })
+      await prisma.attachment.deleteMany({ where: { messageId: msg.id } })
+      await prisma.message.delete({ where: { id: msg.id } })
+      roomsNamespace.to(msg.roomId).emit('message_deleted', { id: msg.id })
+    } catch (error) {
+      console.error('Failed to cleanup self-destruct message', { messageId: msg.id, roomId: msg.roomId, error })
+    }
   }
 }
 
-setInterval(cleanupExpiredRooms, 60 * 1000)
+const runCleanupExpiredRoomsSafely = async () => {
+  try {
+    await cleanupExpiredRooms()
+  } catch (error) {
+    console.error('cleanupExpiredRooms failed', error)
+  }
+}
+
+setInterval(() => {
+  void runCleanupExpiredRoomsSafely()
+}, 60 * 1000)
 
 const port = config.port
 server.listen(port, () => {
