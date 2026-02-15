@@ -478,7 +478,7 @@ app.get('/rooms/:id/attachments/:attachmentId', requireMember, async (req, res) 
         ciphertext: attachment.ciphertext.toString('base64')
     });
 });
-app.post('/admin/login', async (req, res) => {
+app.post(`${config.adminRoutePrefix}/login`, async (req, res) => {
     const { username, password } = req.body;
     if (!safeCompare(username || '', config.adminUsername) || !safeCompare(password || '', config.adminPassword))
         return res.status(401).json({ error: 'invalid_credentials' });
@@ -486,11 +486,11 @@ app.post('/admin/login', async (req, res) => {
     res.cookie('admin_token', token, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
     res.json({ token });
 });
-app.post('/admin/logout', requireAdmin, (req, res) => {
+app.post(`${config.adminRoutePrefix}/logout`, requireAdmin, (req, res) => {
     res.clearCookie('admin_token');
     res.json({ status: 'ok' });
 });
-app.get('/admin/metrics', requireAdmin, async (req, res) => {
+app.get(`${config.adminRoutePrefix}/metrics`, requireAdmin, async (req, res) => {
     const today = todayKey();
     const todayMetrics = await prisma.analyticsDaily.findUnique({ where: { date: today } });
     const lastWeek = await prisma.analyticsDaily.findMany({ orderBy: { date: 'desc' }, take: 7 });

@@ -11,7 +11,6 @@ export const Footer = () => {
       </div>
       <div className="flex flex-wrap gap-4">
         <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
-        <Link href="/admin" className="hover:text-foreground">Admin</Link>
         <Link href="/create" className="hover:text-foreground">Create room</Link>
       </div>
       <span>Invite-only. Nothing stored beyond the timer.</span>

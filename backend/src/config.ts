@@ -8,12 +8,29 @@ const num = (value: string | undefined, fallback: number) => {
   return fallback
 }
 
+const ADMIN_ROUTE_PREFIX_PATTERN = /^\/[A-Za-z0-9_-]+$/
+
+const resolveAdminRoutePrefix = (value: string | undefined, nodeEnv: string | undefined) => {
+  const envValue = value?.trim()
+  if (!envValue) {
+    if (nodeEnv === 'production') {
+      throw new Error('Missing ADMIN_ROUTE_PREFIX in production. Set a private single-segment path like /k9X2mTq4pR8.')
+    }
+    return '/admin'
+  }
+  if (!ADMIN_ROUTE_PREFIX_PATTERN.test(envValue)) {
+    throw new Error('Invalid ADMIN_ROUTE_PREFIX. Use exactly one path segment: /^\\/[A-Za-z0-9_-]+$/.')
+  }
+  return envValue
+}
+
 export const config = {
   port: num(process.env.PORT, 4000),
   corsOrigin: process.env.FRONTEND_ORIGIN || '*',
   adminUsername: process.env.ADMIN_PANEL_USERNAME || 'admin',
   adminPassword: process.env.ADMIN_PANEL_PASSWORD || 'password',
   adminSecret: process.env.ADMIN_SESSION_SECRET || 'change-me',
+  adminRoutePrefix: resolveAdminRoutePrefix(process.env.ADMIN_ROUTE_PREFIX, process.env.NODE_ENV),
   memberTokenSecret: process.env.MEMBER_TOKEN_SECRET || process.env.ADMIN_SESSION_SECRET || 'change-me',
   roomCreationLimit: num(process.env.ROOM_CREATION_HOURLY_LIMIT, 3)
 }

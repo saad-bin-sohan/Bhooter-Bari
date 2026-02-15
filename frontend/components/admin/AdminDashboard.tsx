@@ -1,13 +1,17 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
-import { Card } from '../../components/ui/Card'
-import { Input } from '../../components/ui/Input'
-import { Button } from '../../components/ui/Button'
-import { Badge } from '../../components/ui/Badge'
-import { ThemeToggle } from '../../components/ui/ThemeToggle'
+import { Card } from '../ui/Card'
+import { Input } from '../ui/Input'
+import { Button } from '../ui/Button'
+import { Badge } from '../ui/Badge'
+import { ThemeToggle } from '../ui/ThemeToggle'
 import { apiRequest } from '../../lib/api'
 
-export default function AdminPage() {
+type AdminDashboardProps = {
+  adminRoutePrefix: string
+}
+
+export const AdminDashboard = ({ adminRoutePrefix }: AdminDashboardProps) => {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -15,17 +19,17 @@ export default function AdminPage() {
   const [metrics, setMetrics] = useState<any>(null)
 
   const loadMetrics = async (sessionToken?: string) => {
-    const data = await apiRequest('/admin/metrics', { credentials: true, headers: sessionToken ? { Authorization: `Bearer ${sessionToken}` } : undefined })
+    const data = await apiRequest(`${adminRoutePrefix}/metrics`, { credentials: true, headers: sessionToken ? { Authorization: `Bearer ${sessionToken}` } : undefined })
     setMetrics(data)
   }
 
   const handleLogin = async () => {
     try {
-      const res = await apiRequest<{ token: string }>('/admin/login', { method: 'POST', body: { username, password }, credentials: true })
+      const res = await apiRequest<{ token: string }>(`${adminRoutePrefix}/login`, { method: 'POST', body: { username, password }, credentials: true })
       setToken(res.token)
       setError('')
       await loadMetrics(res.token)
-    } catch (e: any) {
+    } catch (_e: any) {
       setError('Invalid admin credentials')
     }
   }

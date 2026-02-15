@@ -4,6 +4,7 @@ import { Space_Grotesk, Plus_Jakarta_Sans } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '../components/ui/ThemeProvider'
 import { Toaster } from '../components/ui/Toast'
+import { resolveAdminRoutePrefix } from '../lib/adminRoute'
 
 const display = Space_Grotesk({
   subsets: ['latin'],
@@ -21,6 +22,8 @@ export const metadata: Metadata = {
   title: 'Bhooter Bari',
   description: 'Anonymous, ephemeral, end-to-end encrypted rooms.'
 }
+
+resolveAdminRoutePrefix()
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (

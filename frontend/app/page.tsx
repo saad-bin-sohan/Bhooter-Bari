@@ -24,7 +24,6 @@ export default function HomePage() {
             <Link href="/create">
               <Button variant="secondary" size="sm">Create room</Button>
             </Link>
-            <Link href="/admin" className="text-sm text-muted hover:text-foreground">Admin</Link>
             <ThemeToggle />
           </div>
         </header>

@@ -16,7 +16,7 @@ export default function PrivacyPage() {
 
         <Card className="space-y-4 text-sm text-muted">
           <p>Bhooter Bari rooms are invite-only and end-to-end encrypted. The server never sees plaintext messages or attachments.</p>
-          <p>Rooms expire within sixty minutes and are hard-deleted with their messages, attachments, member sessions, and kicks. Analytics counters stay for admin metrics.</p>
+          <p>Rooms expire within sixty minutes and are hard-deleted with their messages, attachments, member sessions, and kicks. Aggregate analytics counters may remain after deletion.</p>
           <p>IP addresses are stored server-side only for rate limiting, abuse reports, and per-room kick enforcement. They are not exposed to clients.</p>
         </Card>
       </div>
