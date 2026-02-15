@@ -1,6 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express'
 import http from 'http'
-import cors from 'cors'
+import cors, { type CorsOptions } from 'cors'
 import cookieParser from 'cookie-parser'
 import multer from 'multer'
 import bcrypt from 'bcryptjs'
@@ -40,9 +40,35 @@ type MessageWithRelations = Prisma.MessageGetPayload<{
   include: { senderSession: true; attachments: true; reactions: true }
 }>
 
+const CORS_ORIGIN_REJECTED_MESSAGE = 'Not allowed by CORS'
+const CORS_VALIDATION_FAILED_MESSAGE = 'CORS origin validation failed'
+const allowedOrigins = new Set(config.frontendOrigins)
+
+if (allowedOrigins.size === 0) {
+  console.warn('FRONTEND_ORIGINS is empty. Cross-origin browser requests will be rejected.')
+}
+
+const isOriginAllowed = (origin: string | undefined): boolean => {
+  if (!origin) return true
+  return allowedOrigins.has(origin)
+}
+
+const corsOrigin: CorsOptions['origin'] = (origin, callback) => {
+  try {
+    if (isOriginAllowed(origin)) {
+      callback(null, true)
+      return
+    }
+    callback(new Error(CORS_ORIGIN_REJECTED_MESSAGE))
+  } catch (error) {
+    console.error('Failed to validate CORS origin', error)
+    callback(new Error(CORS_VALIDATION_FAILED_MESSAGE))
+  }
+}
+
 const app = express()
 app.set('trust proxy', 1)
-app.use(cors({ origin: config.corsOrigin === '*' ? true : config.corsOrigin, credentials: true }))
+app.use(cors({ origin: corsOrigin, credentials: true }))
 app.use(express.json({ limit: '2mb' }))
 app.use(cookieParser())
 
@@ -54,7 +80,7 @@ const pendingSockets = new Map<string, Socket>()
 const activeSessions = new Map<string, Map<string, ActiveSession>>()
 
 const server = http.createServer(app)
-const io = new Server(server, { cors: { origin: config.corsOrigin === '*' ? true : config.corsOrigin, credentials: true } })
+const io = new Server(server, { cors: { origin: corsOrigin, credentials: true } })
 const roomsNamespace = io.of('/rooms')
 
 const getIp = (req: Request): string => {
@@ -526,6 +552,16 @@ app.get(`${config.adminRoutePrefix}/metrics`, requireAdmin, async (req, res) => 
     },
     history: lastWeek.reverse()
   })
+})
+
+app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {
+  if (error instanceof Error && error.message === CORS_ORIGIN_REJECTED_MESSAGE) {
+    return res.status(403).json({ error: 'cors_not_allowed' })
+  }
+  if (error instanceof Error && error.message === CORS_VALIDATION_FAILED_MESSAGE) {
+    return res.status(500).json({ error: 'cors_validation_failed' })
+  }
+  return next(error)
 })
 
 const recordDisconnect = async (roomId: string, memberSessionId: string) => {

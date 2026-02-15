@@ -7,6 +7,28 @@ const num = (value, fallback) => {
     return fallback;
 };
 const ADMIN_ROUTE_PREFIX_PATTERN = /^\/[A-Za-z0-9_-]+$/;
+const parseFrontendOrigins = (value) => {
+    if (!value)
+        return [];
+    const uniqueOrigins = new Set();
+    for (const rawOrigin of value.split(',')) {
+        const origin = rawOrigin.trim();
+        if (!origin)
+            continue;
+        try {
+            const parsed = new URL(origin);
+            if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+                console.warn(`Ignoring FRONTEND_ORIGINS entry with unsupported protocol: ${origin}`);
+                continue;
+            }
+            uniqueOrigins.add(origin);
+        }
+        catch {
+            console.warn(`Ignoring invalid FRONTEND_ORIGINS entry: ${origin}`);
+        }
+    }
+    return [...uniqueOrigins];
+};
 const resolveAdminRoutePrefix = (value, nodeEnv) => {
     const envValue = value?.trim();
     if (!envValue) {
@@ -22,7 +44,7 @@ const resolveAdminRoutePrefix = (value, nodeEnv) => {
 };
 export const config = {
     port: num(process.env.PORT, 4000),
-    corsOrigin: process.env.FRONTEND_ORIGIN || '*',
+    frontendOrigins: parseFrontendOrigins(process.env.FRONTEND_ORIGINS),
     adminUsername: process.env.ADMIN_PANEL_USERNAME || 'admin',
     adminPassword: process.env.ADMIN_PANEL_PASSWORD || 'password',
     adminSecret: process.env.ADMIN_SESSION_SECRET || 'change-me',

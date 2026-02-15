@@ -19,7 +19,7 @@ Anonymous, invite-only rooms with end-to-end encryption, ephemeral timers up to 
    - `ADMIN_ROUTE_PREFIX` private admin route prefix (single segment like `/k9X2mTq4pR8`)
    - `MEMBER_TOKEN_SECRET` signing secret for member tokens (falls back to admin secret)
    - `ROOM_CREATION_HOURLY_LIMIT` defaults to 3
-   - `FRONTEND_ORIGIN` allowed origin for CORS/WebSocket (e.g. `https://your-frontend.vercel.app`)
+   - `FRONTEND_ORIGINS` comma-separated allowed origins for CORS/WebSocket (e.g. `https://bhooterbari.vercel.app,https://bhooter-bari.vercel.app`)
 3. Prisma: `npx prisma generate` then `npx prisma migrate dev --name init` (or `prisma migrate deploy` in prod).
 4. Run dev server: `npm run dev`
 5. Build/start: `npm run build && npm start`
