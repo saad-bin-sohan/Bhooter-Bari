@@ -3,6 +3,7 @@ import { Hero } from '../components/landing/Hero'
 import { Features } from '../components/landing/Features'
 import { HowItWorks } from '../components/landing/HowItWorks'
 import { Footer } from '../components/landing/Footer'
+import { LandingMusicControl } from '../components/landing/LandingMusicControl'
 import { Button } from '../components/ui/Button'
 import { ThemeToggle } from '../components/ui/ThemeToggle'
 import { Badge } from '../components/ui/Badge'
@@ -60,6 +61,7 @@ export default function HomePage() {
 
         <Footer />
       </div>
+      <LandingMusicControl />
     </main>
   )
 }
