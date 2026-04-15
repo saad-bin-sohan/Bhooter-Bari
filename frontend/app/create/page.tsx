@@ -1,6 +1,9 @@
 'use client'
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
+import { AnimatePresence, motion } from 'framer-motion'
+import { ArrowLeft } from 'lucide-react'
 import { Card } from '../../components/ui/Card'
 import { Input } from '../../components/ui/Input'
 import { Toggle } from '../../components/ui/Toggle'
@@ -9,13 +12,108 @@ import { Tabs } from '../../components/ui/Tabs'
 import { Textarea } from '../../components/ui/Textarea'
 import { Badge } from '../../components/ui/Badge'
 import { ThemeToggle } from '../../components/ui/ThemeToggle'
-import { Progress } from '../../components/ui/Progress'
+import { Logo } from '../../components/ui/Logo'
+import { TimerSlider } from '../../components/create/TimerSlider'
+import { PrivacyGroup } from '../../components/create/PrivacyGroup'
+import { InvitePanel } from '../../components/create/InvitePanel'
 import { apiRequest } from '../../lib/api'
 import { generateRoomKey } from '../../lib/crypto'
 import { useToast } from '../../lib/hooks/useToast'
-import { ArrowLeft, Link2 } from 'lucide-react'
 
 const defaultDuration = 15
+
+type RoomSummaryProps = {
+  type: 'group' | 'direct'
+  durationMinutes: number
+  requireApproval: boolean
+  allowAttachments: boolean
+  allowLinks: boolean
+  selfDestructModeEnabled: boolean
+  burnAfterReadEnabled: boolean
+  panicButtonEnabled: boolean
+  screenshotWarningEnabled: boolean
+  tagList: string[]
+}
+
+function RoomSummary({
+  type,
+  durationMinutes,
+  requireApproval,
+  allowAttachments,
+  allowLinks,
+  selfDestructModeEnabled,
+  burnAfterReadEnabled,
+  panicButtonEnabled,
+  screenshotWarningEnabled,
+  tagList
+}: RoomSummaryProps) {
+  const controls = [
+    { label: 'End-to-end encrypted', active: true, always: true },
+    { label: 'Allow attachments', active: allowAttachments },
+    { label: 'Allow links', active: allowLinks },
+    { label: 'Approval required', active: requireApproval },
+    { label: 'Self-destruct (30s)', active: selfDestructModeEnabled },
+    { label: 'Burn after read', active: burnAfterReadEnabled },
+    { label: 'Panic button', active: panicButtonEnabled },
+    { label: 'Screenshot warning', active: screenshotWarningEnabled }
+  ]
+
+  return (
+    <div className="panel space-y-4 p-5">
+      <p className="text-xs font-medium text-muted">Room preview</p>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted">Type</span>
+          <span className="text-sm font-medium text-foreground">
+            {type === 'group' ? 'Group' : '1-1'}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted">Duration</span>
+          <span className="font-mono text-sm font-medium text-foreground">
+            {durationMinutes} min
+          </span>
+        </div>
+      </div>
+
+      <div className="divider" />
+
+      <div className="space-y-2">
+        {controls.map(({ label, active, always }) => (
+          <div key={label} className="flex items-center justify-between">
+            <span className={`text-xs ${active ? 'text-foreground' : 'text-muted/60'}`}>
+              {label}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <Badge
+                variant="dot"
+                color={active ? 'success' : 'muted'}
+              />
+              <span className={`text-xs font-mono ${active ? 'text-success' : 'text-muted/60'}`}>
+                {always ? 'always' : active ? 'on' : 'off'}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {tagList.length > 0 ? (
+        <>
+          <div className="divider" />
+          <div className="space-y-1.5">
+            <p className="text-xs text-muted">Tags</p>
+            <div className="flex flex-wrap gap-1.5">
+              {tagList.map(tag => (
+                <Badge key={tag}>{tag}</Badge>
+              ))}
+            </div>
+          </div>
+        </>
+      ) : null}
+    </div>
+  )
+}
 
 export default function CreateRoomPage() {
   const searchParams = useSearchParams()
@@ -82,156 +180,257 @@ export default function CreateRoomPage() {
     pushToast({ title: 'Invite copied', message: 'Share the link with people you trust.', variant: 'success' })
   }
 
-  const stepsProgress = Math.min(100, Math.round(((name ? 1 : 0) + (password ? 1 : 0) + (rules ? 1 : 0) + (tags ? 1 : 0)) / 4) * 100)
-
   return (
-    <main className="min-h-screen px-6 py-10 md:px-10">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
-        <header className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-sm text-muted">Create an anonymous room</p>
-            <h1 className="text-3xl font-semibold md:text-4xl">Room setup</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => router.push('/')}
-              aria-label="Back home">
+    <>
+      <header className="sticky top-0 z-30 border-b border-border/40 bg-background/80 backdrop-blur-md">
+        <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-3.5 md:px-10">
+          <Link href="/">
+            <Logo />
+          </Link>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push('/')}
+              aria-label="Back home"
+            >
               <ArrowLeft className="h-4 w-4" />
-              Back home
+              Back
             </Button>
             <ThemeToggle />
           </div>
-        </header>
+        </div>
+      </header>
 
-        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-          <Card className="space-y-6">
-            <div className="space-y-3">
-              <p className="text-xs uppercase tracking-[0.4em] text-muted">Room type</p>
-              <Tabs
-                tabs={[
-                  { id: 'group', label: 'Group room' },
-                  { id: 'direct', label: '1-1 room' }
-                ]}
-                value={type}
-                onChange={value => setType(value as 'group' | 'direct')}
-              />
-            </div>
+      <main className="mx-auto w-full max-w-5xl px-6 py-10 md:px-10">
+        <div className="mb-8">
+          <h1 className="font-display text-3xl font-semibold text-foreground">
+            Set up your room
+          </h1>
+          <p className="mt-1 text-sm text-muted">
+            Configure privacy controls, then share the invite link.
+          </p>
+        </div>
 
-            <form className="space-y-6" onSubmit={handleSubmit}>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-xs uppercase tracking-[0.3em] text-muted">Room name</label>
-                  <Input value={name} onChange={e => setName(e.target.value)} placeholder="Safety circle" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs uppercase tracking-[0.3em] text-muted">Timer</label>
-                  <div className="rounded-2xl border border-border/60 bg-surface px-4 py-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span>Duration</span>
-                      <span className="font-semibold text-foreground">{durationMinutes} minutes</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={1}
-                      max={60}
-                      value={durationMinutes}
-                      onChange={e => setDurationMinutes(Number(e.target.value))}
-                      className="mt-3 w-full accent-primary"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs uppercase tracking-[0.3em] text-muted">Password (optional)</label>
-                  <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Protect with password" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs uppercase tracking-[0.3em] text-muted">Tags</label>
-                  <Input value={tags} onChange={e => setTags(e.target.value)} placeholder="privacy, friends" />
-                  <div className="flex flex-wrap gap-2">
-                    {tagList.map(tag => (
-                      <Badge key={tag}>{tag}</Badge>
-                    ))}
-                  </div>
-                </div>
-                <div className="md:col-span-2 space-y-2">
-                  <label className="text-xs uppercase tracking-[0.3em] text-muted">Room rules</label>
-                  <Textarea
-                    className="min-h-[120px]"
-                    value={rules}
-                    onChange={e => setRules(e.target.value)}
-                    placeholder="Share boundaries or topics"
+        <div className="grid gap-8 lg:grid-cols-[1fr_300px] lg:items-start">
+          <Card className="p-0">
+            <form onSubmit={handleSubmit} className="divide-y divide-border/50">
+              <div className="space-y-3 px-5 py-5">
+                <p className="text-xs font-medium text-muted">Room type</p>
+                <Tabs
+                  tabs={[
+                    { id: 'group', label: 'Group room' },
+                    { id: 'direct', label: '1-1 room' }
+                  ]}
+                  value={type}
+                  onChange={value => setType(value as 'group' | 'direct')}
+                />
+                <p className="text-xs text-muted">
+                  {type === 'group'
+                    ? 'Multiple members. Creator controls who joins.'
+                    : 'Two participants only. Invite link is single-use.'}
+                </p>
+              </div>
+
+              <div className="space-y-4 px-5 py-5">
+                <p className="text-xs font-medium text-muted">Room identity</p>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="room-name" className="text-sm font-medium text-foreground">
+                    Room name
+                    <span className="ml-1 text-xs font-normal text-muted">(optional)</span>
+                  </label>
+                  <Input
+                    id="room-name"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    placeholder="e.g. Safety circle"
+                    autoComplete="off"
                   />
                 </div>
-              </div>
 
-              <div className="space-y-3">
-                <p className="text-xs uppercase tracking-[0.4em] text-muted">Privacy controls</p>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <Toggle label="Allow attachments" value={allowAttachments} onChange={setAllowAttachments} />
-                  <Toggle label="Allow links" value={allowLinks} onChange={setAllowLinks} />
-                  <Toggle label="Require join approval" value={requireApproval} onChange={setRequireApproval} />
-                  <Toggle label="Self-destruct messages" value={selfDestructModeEnabled} onChange={setSelfDestructModeEnabled} />
-                  <Toggle label="Burn after reading" value={burnAfterReadEnabled} onChange={setBurnAfterReadEnabled} />
-                  <Toggle label="Per-user panic button" value={panicButtonEnabled} onChange={setPanicButtonEnabled} />
-                  <Toggle label="Screenshot warning" value={screenshotWarningEnabled} onChange={setScreenshotWarningEnabled} />
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground">
+                    Room timer
+                  </label>
+                  <TimerSlider value={durationMinutes} onChange={setDurationMinutes} />
                 </div>
               </div>
 
-              {error && <div className="rounded-2xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">{error}</div>}
+              <div className="space-y-4 px-5 py-5">
+                <p className="text-xs font-medium text-muted">Access</p>
 
-              <div className="flex flex-wrap items-center gap-4">
-                <Button type="submit" disabled={loading}>{loading ? 'Creating...' : 'Create room'}</Button>
-                <span className="text-sm text-muted">A secret key will live only in your browser.</span>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label htmlFor="room-password" className="text-sm font-medium text-foreground">
+                      Room password
+                      <span className="ml-1 text-xs font-normal text-muted">(optional)</span>
+                    </label>
+                    <Input
+                      id="room-password"
+                      type="password"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      placeholder="Shared passphrase"
+                      autoComplete="new-password"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label htmlFor="room-tags" className="text-sm font-medium text-foreground">
+                      Tags
+                      <span className="ml-1 text-xs font-normal text-muted">(comma-separated)</span>
+                    </label>
+                    <Input
+                      id="room-tags"
+                      value={tags}
+                      onChange={e => setTags(e.target.value)}
+                      placeholder="e.g. privacy, friends"
+                      autoComplete="off"
+                    />
+                    {tagList.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {tagList.map(tag => (
+                          <Badge key={tag}>{tag}</Badge>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 px-5 py-5">
+                <label htmlFor="room-rules" className="text-sm font-medium text-foreground">
+                  Room rules
+                  <span className="ml-1 text-xs font-normal text-muted">(optional)</span>
+                </label>
+                <Textarea
+                  id="room-rules"
+                  className="min-h-[96px]"
+                  value={rules}
+                  onChange={e => setRules(e.target.value)}
+                  placeholder="Share boundaries, topics, or guidelines for this room"
+                />
+              </div>
+
+              <div className="space-y-5 px-5 py-5">
+                <p className="text-xs font-medium text-muted">Privacy controls</p>
+
+                <PrivacyGroup label="Content" first>
+                  <Toggle
+                    label="Allow attachments"
+                    description="Members can send encrypted files up to 10 MB"
+                    value={allowAttachments}
+                    onChange={setAllowAttachments}
+                  />
+                  <Toggle
+                    label="Allow links"
+                    description="URL sharing in messages"
+                    value={allowLinks}
+                    onChange={setAllowLinks}
+                  />
+                </PrivacyGroup>
+
+                <PrivacyGroup label="Access">
+                  <Toggle
+                    label="Require join approval"
+                    description="New members wait for your approval before entering"
+                    value={requireApproval}
+                    onChange={setRequireApproval}
+                  />
+                </PrivacyGroup>
+
+                <PrivacyGroup label="Message lifecycle">
+                  <Toggle
+                    label="Self-destruct messages"
+                    description="Each message auto-deletes 30 seconds after sending"
+                    value={selfDestructModeEnabled}
+                    onChange={setSelfDestructModeEnabled}
+                  />
+                  <Toggle
+                    label="Burn after reading"
+                    description="Messages disappear once all members have viewed them"
+                    value={burnAfterReadEnabled}
+                    onChange={setBurnAfterReadEnabled}
+                  />
+                  <Toggle
+                    label="Per-user panic button"
+                    description="Members can instantly wipe their own messages at any time"
+                    value={panicButtonEnabled}
+                    onChange={setPanicButtonEnabled}
+                  />
+                  <Toggle
+                    label="Screenshot warning"
+                    description="Detects screenshot keyboard shortcuts and warns the room"
+                    value={screenshotWarningEnabled}
+                    onChange={setScreenshotWarningEnabled}
+                  />
+                </PrivacyGroup>
+              </div>
+
+              <div className="px-5 py-5">
+                {error ? (
+                  <div className="mb-4 rounded-xl border border-danger/30 bg-danger/8 px-4 py-3 text-sm text-danger">
+                    {error}
+                  </div>
+                ) : null}
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button type="submit" variant="primary" disabled={loading}>
+                    {loading ? 'Creating...' : 'Create room'}
+                  </Button>
+                  <p className="text-xs text-muted">
+                    An encryption key will be generated in your browser and embedded in the invite link.
+                  </p>
+                </div>
               </div>
             </form>
           </Card>
 
-          <div className="space-y-6">
-            <Card variant="glass" className="space-y-4">
-              <p className="text-xs uppercase tracking-[0.4em] text-muted">Setup progress</p>
-              <Progress value={stepsProgress} />
-              <div className="space-y-2 text-sm text-muted">
-                <p>Room type: <span className="font-semibold text-foreground">{type === 'group' ? 'Group' : '1-1'}</span></p>
-                <p>Timer: <span className="font-semibold text-foreground">{durationMinutes} minutes</span></p>
-                <p>Approval: <span className="font-semibold text-foreground">{requireApproval ? 'Required' : 'Open'}</span></p>
-                <p>Burn after read: <span className="font-semibold text-foreground">{burnAfterReadEnabled ? 'Enabled' : 'Off'}</span></p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {allowAttachments && <Badge variant="success">Attachments on</Badge>}
-                {allowLinks && <Badge>Links on</Badge>}
-                {selfDestructModeEnabled && <Badge variant="warning">Self-destruct</Badge>}
-              </div>
-            </Card>
-
-            {invite && (
-              <Card className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.4em] text-muted">Invite link</p>
-                    <h3 className="text-xl font-semibold">Room created</h3>
-                  </div>
-                  <Badge variant="success">Ready</Badge>
-                </div>
-                <p className="text-sm text-muted">Share this invite link. The encryption key lives after the hash.</p>
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-surface2 px-3 py-2 text-xs text-muted">
-                    <Link2 className="h-4 w-4" />
-                    <span className="truncate">{invite.url}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button type="button" onClick={handleCopy}>Copy link</Button>
-                    <Button variant="secondary" type="button" onClick={() => router.push(`/r/${invite.slug}${window.location.hash || ''}`)}>
-                      Enter room now
-                    </Button>
-                    <Button variant="ghost" type="button" onClick={() => router.refresh()}>
-                      Create another
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            )}
-          </div>
+          <aside className="lg:sticky lg:top-24">
+            <AnimatePresence mode="wait">
+              {invite ? (
+                <motion.div
+                  key="invite"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.25, ease: 'easeOut' }}
+                >
+                  <InvitePanel
+                    invite={invite}
+                    onCopy={handleCopy}
+                    onEnter={() => router.push(`/r/${invite.slug}${window.location.hash || ''}`)}
+                    onCreateAnother={() => router.refresh()}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="summary"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.25, ease: 'easeOut' }}
+                >
+                  <RoomSummary
+                    type={type}
+                    durationMinutes={durationMinutes}
+                    requireApproval={requireApproval}
+                    allowAttachments={allowAttachments}
+                    allowLinks={allowLinks}
+                    selfDestructModeEnabled={selfDestructModeEnabled}
+                    burnAfterReadEnabled={burnAfterReadEnabled}
+                    panicButtonEnabled={panicButtonEnabled}
+                    screenshotWarningEnabled={screenshotWarningEnabled}
+                    tagList={tagList}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </aside>
         </div>
-      </div>
-    </main>
+      </main>
+    </>
   )
 }
