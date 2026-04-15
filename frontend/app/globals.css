@@ -5,69 +5,98 @@
 @layer base {
   :root {
     color-scheme: light;
-    --bg: 215 40% 98%;
-    --bg-2: 214 40% 95%;
+
+    /* Backgrounds */
+    --bg: 168 15% 97%;
+    --bg-2: 168 12% 93%;
+
+    /* Surfaces (layering system: surface < surface-2 < surface-3) */
     --surface: 0 0% 100%;
-    --surface-2: 220 30% 97%;
-    --surface-3: 220 22% 94%;
-    --text: 222 44% 12%;
-    --text-muted: 215 16% 46%;
-    --border: 220 20% 88%;
-    --primary: 221 83% 57%;
-    --primary-2: 189 85% 42%;
+    --surface-2: 165 10% 96%;
+    --surface-3: 165 8% 91%;
+
+    /* Typography */
+    --text: 215 28% 12%;
+    --text-muted: 200 10% 46%;
+
+    /* Structural */
+    --border: 185 14% 84%;
+
+    /* Primary — deep forest teal */
+    --primary: 172 55% 30%;
+    --primary-2: 168 50% 24%;
     --primary-foreground: 0 0% 100%;
-    --accent: 18 86% 58%;
-    --accent-foreground: 0 0% 100%;
-    --success: 152 58% 40%;
+
+    /* Accent — warm amber */
+    --accent: 38 88% 48%;
+    --accent-foreground: 38 80% 12%;
+
+    /* Semantic */
+    --success: 150 52% 36%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 91% 56%;
-    --warning-foreground: 25 80% 15%;
-    --danger: 0 78% 58%;
+    --warning: 38 88% 48%;
+    --warning-foreground: 38 80% 12%;
+    --danger: 0 68% 52%;
     --danger-foreground: 0 0% 100%;
-    --ring: 221 83% 57%;
-    --shadow: 222 40% 12%;
+
+    /* Utility */
+    --ring: 172 55% 30%;
+    --shadow: 215 28% 12%;
   }
 
   .dark {
     color-scheme: dark;
-    --bg: 225 22% 8%;
-    --bg-2: 223 18% 12%;
-    --surface: 228 20% 13%;
-    --surface-2: 228 16% 17%;
-    --surface-3: 225 14% 20%;
-    --text: 210 40% 96%;
-    --text-muted: 216 16% 72%;
-    --border: 230 15% 26%;
-    --primary: 217 90% 62%;
-    --primary-2: 188 84% 48%;
-    --primary-foreground: 215 40% 96%;
-    --accent: 20 88% 62%;
-    --accent-foreground: 210 40% 96%;
-    --success: 150 55% 45%;
-    --success-foreground: 210 40% 96%;
-    --warning: 40 92% 60%;
-    --warning-foreground: 222 40% 10%;
-    --danger: 0 72% 60%;
-    --danger-foreground: 210 40% 96%;
-    --ring: 217 90% 62%;
-    --shadow: 222 50% 4%;
+
+    /* Backgrounds */
+    --bg: 216 18% 7%;
+    --bg-2: 216 16% 10%;
+
+    /* Surfaces */
+    --surface: 216 15% 13%;
+    --surface-2: 215 13% 17%;
+    --surface-3: 214 12% 21%;
+
+    /* Typography */
+    --text: 168 12% 94%;
+    --text-muted: 190 8% 56%;
+
+    /* Structural */
+    --border: 210 14% 22%;
+
+    /* Primary — deep forest teal */
+    --primary: 172 52% 38%;
+    --primary-2: 168 48% 30%;
+    --primary-foreground: 165 25% 97%;
+
+    /* Accent — warm amber */
+    --accent: 38 85% 54%;
+    --accent-foreground: 38 75% 12%;
+
+    /* Semantic */
+    --success: 150 50% 42%;
+    --success-foreground: 150 20% 97%;
+    --warning: 38 85% 54%;
+    --warning-foreground: 38 75% 12%;
+    --danger: 0 65% 56%;
+    --danger-foreground: 0 0% 98%;
+
+    /* Utility */
+    --ring: 172 52% 38%;
+    --shadow: 216 25% 4%;
   }
 
   * {
-    border-color: hsl(var(--border) / 0.6);
+    border-color: hsl(var(--border) / 0.7);
   }
 
   html {
     text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
   }
 
   body {
     min-height: 100vh;
     background-color: hsl(var(--bg));
-    background-image:
-      radial-gradient(circle at 10% 10%, hsl(var(--primary) / 0.12), transparent 45%),
-      radial-gradient(circle at 90% 20%, hsl(var(--accent) / 0.16), transparent 45%),
-      radial-gradient(circle at 80% 80%, hsl(var(--primary-2) / 0.12), transparent 50%);
     color: hsl(var(--text));
     font-family: var(--font-sans), system-ui, sans-serif;
   }
@@ -78,7 +107,8 @@
   h4,
   h5 {
     font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
+    line-height: 1.1;
   }
 
   a {
@@ -87,15 +117,15 @@
   }
 
   ::selection {
-    background: hsl(var(--primary) / 0.2);
+    background: hsl(var(--primary) / 0.25);
   }
 
   ::-webkit-scrollbar {
-    width: 10px;
+    width: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    background: hsl(var(--bg));
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
@@ -105,31 +135,54 @@
 }
 
 @layer components {
+  /* Glass surface — refined. Use sparingly. */
   .glass {
-    background: linear-gradient(135deg, hsl(var(--surface) / 0.72), hsl(var(--surface-2) / 0.38));
-    box-shadow: 0 30px 80px -60px hsl(var(--shadow) / 0.6);
-    backdrop-filter: blur(18px);
-    border: 1px solid hsl(var(--border) / 0.6);
+    background: hsl(var(--surface) / 0.65);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid hsl(var(--border) / 0.5);
+    box-shadow: 0 8px 32px -8px hsl(var(--shadow) / 0.4);
   }
 
-  .mesh {
-    background-image:
-      radial-gradient(circle at 0% 0%, hsl(var(--primary) / 0.24), transparent 45%),
-      radial-gradient(circle at 100% 0%, hsl(var(--accent) / 0.2), transparent 48%),
-      radial-gradient(circle at 80% 100%, hsl(var(--primary-2) / 0.22), transparent 40%);
-  }
-
-  .card-surface {
+  /* Standard panel/card surface */
+  .panel {
     background: hsl(var(--surface));
-    border: 1px solid hsl(var(--border) / 0.7);
-    box-shadow: 0 20px 60px -40px hsl(var(--shadow) / 0.4);
-    border-radius: 24px;
+    border: 1px solid hsl(var(--border) / 0.8);
+    box-shadow:
+      0 1px 3px hsl(var(--shadow) / 0.12),
+      0 4px 16px -4px hsl(var(--shadow) / 0.08);
+    border-radius: 16px;
   }
 
-  .subtle-grid {
-    background-image: linear-gradient(hsl(var(--border) / 0.3) 1px, transparent 1px),
-      linear-gradient(90deg, hsl(var(--border) / 0.25) 1px, transparent 1px);
-    background-size: 24px 24px;
+  /* Teal focus ring utility */
+  .focus-ring {
+    outline: none;
+  }
+
+  .focus-ring:focus-visible {
+    box-shadow:
+      0 0 0 2px hsl(var(--bg)),
+      0 0 0 4px hsl(var(--ring) / 0.6);
+  }
+
+  /* Monospace cipher display — for slugs, keys, technical strings */
+  .cipher {
+    font-family: var(--font-mono), 'Courier New', monospace;
+    font-size: 0.8125rem;
+    letter-spacing: 0.025em;
+    color: hsl(var(--text-muted));
+  }
+
+  /* Teal accent left-border stripe — for eyebrow labels, blockquotes */
+  .stripe {
+    border-left: 2px solid hsl(var(--primary));
+    padding-left: 0.75rem;
+  }
+
+  /* Subtle horizontal divider */
+  .divider {
+    height: 1px;
+    background: hsl(var(--border) / 0.6);
   }
 }
 
@@ -141,10 +194,17 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;

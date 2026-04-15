@@ -2,16 +2,27 @@
 import { HTMLAttributes } from 'react'
 import { cn } from '../../lib/utils'
 
-export type CardProps = HTMLAttributes<HTMLDivElement> & {
-  variant?: 'surface' | 'glass' | 'outline'
+type CardElement = 'div' | 'article' | 'section' | 'aside'
+
+export type CardProps = HTMLAttributes<HTMLElement> & {
+  as?: CardElement
+  variant?: 'surface' | 'panel' | 'glass' | 'outline' | 'flat'
 }
 
 const variants = {
-  surface: 'card-surface',
-  glass: 'glass',
-  outline: 'rounded-3xl border border-border/70 bg-transparent'
+  surface: 'panel',
+  panel: 'panel',
+  glass: 'glass rounded-xl',
+  outline: 'rounded-xl border border-border/60 bg-transparent',
+  flat: 'rounded-xl'
 }
 
-export const Card = ({ className, variant = 'surface', ...rest }: CardProps) => {
-  return <div className={cn('p-6', variants[variant], className)} {...rest} />
+export const Card = ({
+  as = 'div',
+  className,
+  variant = 'surface',
+  ...rest
+}: CardProps) => {
+  const Component = as
+  return <Component className={cn('p-5', variants[variant], className)} {...rest} />
 }

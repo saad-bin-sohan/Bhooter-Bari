@@ -12,15 +12,17 @@ type Props = {
 
 export const Tabs = ({ tabs, value, onChange, className }: Props) => {
   return (
-    <div className={cn('flex flex-wrap gap-2 rounded-full bg-surface2 p-1', className)}>
+    <div className={cn('inline-flex flex-wrap gap-1 rounded-xl border border-border/50 bg-surface-2 p-1', className)}>
       {tabs.map(tab => (
         <button
           key={tab.id}
           type="button"
           onClick={() => onChange(tab.id)}
           className={cn(
-            'rounded-full px-4 py-2 text-sm font-semibold transition',
-            value === tab.id ? 'bg-surface text-foreground shadow-soft' : 'text-muted hover:text-foreground'
+            'rounded-lg px-4 py-1.5 text-sm font-medium transition-colors duration-150',
+            value === tab.id
+              ? 'border border-border/60 bg-surface text-foreground shadow-xs'
+              : 'text-muted hover:bg-surface-3 hover:text-foreground'
           )}
         >
           {tab.label}

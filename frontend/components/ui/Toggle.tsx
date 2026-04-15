@@ -13,25 +13,24 @@ export const Toggle = ({ label, value, onChange, description }: Props) => {
     <button
       type="button"
       className={cn(
-        'flex w-full items-center justify-between rounded-2xl border border-border/70 bg-surface px-4 py-3 text-left shadow-soft transition hover:shadow-card',
-        value ? 'ring-1 ring-primary/30' : ''
+        'focus-ring flex w-full items-center justify-between gap-4 rounded-xl border border-border/60 bg-surface px-4 py-3 text-left transition-colors duration-150 hover:bg-surface-2'
       )}
       onClick={() => onChange(!value)}
     >
       <div>
-        <p className="text-sm font-semibold text-foreground">{label}</p>
+        <p className="text-sm text-foreground">{label}</p>
         {description && <p className="text-xs text-muted">{description}</p>}
       </div>
       <span
         className={cn(
-          'relative h-6 w-12 rounded-full border border-border/70 transition',
-          value ? 'bg-primary' : 'bg-surface3'
+          'relative h-6 w-10 rounded-full border border-border transition-all duration-200',
+          value ? 'bg-primary' : 'bg-surface-3'
         )}
       >
         <span
           className={cn(
-            'absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-soft transition-transform',
-            value ? 'translate-x-6' : 'translate-x-0'
+            'absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-xs transition-all duration-200',
+            value ? 'translate-x-[18px]' : 'translate-x-0'
           )}
         />
       </span>

@@ -3,22 +3,23 @@ import { ButtonHTMLAttributes } from 'react'
 import { cn } from '../../lib/utils'
 
 const base =
-  'inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-60'
+  'focus-ring inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-colors duration-150 disabled:pointer-events-none disabled:opacity-60'
 
 const variants = {
-  primary: 'bg-gradient-to-r from-primary to-primary-2 text-primary-foreground shadow-glow hover:shadow-card',
-  secondary: 'bg-surface2 text-foreground border border-border shadow-soft hover:shadow-card',
-  ghost: 'bg-transparent text-foreground hover:bg-surface2',
-  outline: 'border border-border text-foreground hover:bg-surface2',
-  danger: 'bg-danger text-danger-foreground shadow-soft hover:shadow-card',
-  icon: 'bg-surface2 text-foreground hover:bg-surface3'
+  primary: 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/85',
+  secondary: 'border border-border bg-surface-2 text-foreground hover:bg-surface-3',
+  ghost: 'bg-transparent text-foreground hover:bg-surface-2',
+  outline: 'border border-border bg-transparent text-foreground hover:bg-surface-2',
+  danger: 'bg-danger text-danger-foreground hover:bg-danger/85',
+  icon: 'rounded-lg bg-surface-2 text-muted hover:bg-surface-3 hover:text-foreground',
+  accent: 'bg-accent text-accent-foreground hover:bg-accent/85'
 }
 
 const sizes = {
-  sm: 'px-3 py-2 text-sm',
-  md: 'px-5 py-3 text-sm',
-  lg: 'px-6 py-3.5 text-base',
-  icon: 'p-2.5'
+  sm: 'px-3 py-1.5 text-sm',
+  md: 'px-4 py-2 text-sm',
+  lg: 'px-5 py-2.5 text-base',
+  icon: 'p-2'
 }
 
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {

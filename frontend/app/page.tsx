@@ -1,67 +1,119 @@
+'use client'
+
 import Link from 'next/link'
-import { Hero } from '../components/landing/Hero'
-import { Features } from '../components/landing/Features'
-import { HowItWorks } from '../components/landing/HowItWorks'
+import { motion } from 'framer-motion'
 import { Footer } from '../components/landing/Footer'
+import { Features } from '../components/landing/Features'
+import { Hero } from '../components/landing/Hero'
+import { HowItWorks } from '../components/landing/HowItWorks'
 import { LandingMusicControl } from '../components/landing/LandingMusicControl'
 import { Button } from '../components/ui/Button'
+import { Logo } from '../components/ui/Logo'
 import { ThemeToggle } from '../components/ui/ThemeToggle'
-import { Badge } from '../components/ui/Badge'
-import { Card } from '../components/ui/Card'
+
+const revealViewport = { once: true, margin: '-60px' }
+
+const testimonials = [
+  {
+    quote: '“Feels like the rare messaging tool that respects silence as much as conversation.”',
+    attribution: 'A researcher sharing sensitive drafts'
+  },
+  {
+    quote: '“We needed a room we could trust for an hour, not an account we had to keep forever.”',
+    attribution: 'An organizer coordinating live response work'
+  },
+  {
+    quote: '“Fast enough for live decisions, quiet enough that nobody leaves residue behind.”',
+    attribution: 'A small team reviewing confidential material'
+  }
+]
+
+function EncryptionCTA() {
+  return (
+    <motion.section
+      whileInView={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, y: 12 }}
+      viewport={revealViewport}
+      transition={{ duration: 0.45, ease: 'easeOut' }}
+      className="grid gap-10 lg:grid-cols-[1.1fr_auto_0.9fr] lg:items-stretch"
+    >
+      <div className="max-w-2xl space-y-5">
+        <h2 className="font-display text-3xl font-semibold text-foreground">
+          Encryption that lives in your browser.
+        </h2>
+        <p className="max-w-xl text-base leading-relaxed text-muted">
+          Keys are created locally and shared only through the invite link fragment. The backend
+          coordinates room state, timing, and delivery, but readable content never leaves the
+          people inside the room.
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link href="/create">
+            <Button variant="primary" size="lg">
+              Create a room
+            </Button>
+          </Link>
+          <Link
+            href="/privacy"
+            className="text-sm text-muted underline underline-offset-4 transition-colors hover:text-foreground"
+          >
+            Read the privacy model
+          </Link>
+        </div>
+      </div>
+
+      <div className="hidden lg:block">
+        <div className="divider h-full w-px" />
+      </div>
+
+      <div className="space-y-5">
+        {testimonials.map((item, index) => (
+          <div key={item.attribution} className="space-y-3">
+            <p className="text-sm leading-relaxed text-foreground">{item.quote}</p>
+            <p className="text-xs text-muted">- {item.attribution}</p>
+            {index < testimonials.length - 1 ? <div className="divider" /> : null}
+          </div>
+        ))}
+      </div>
+    </motion.section>
+  )
+}
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen px-6 py-10 md:px-10">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-12">
-        <header className="flex flex-wrap items-center justify-between gap-4">
+    <>
+      <header className="sticky top-0 z-30 border-b border-border/40 bg-background/80 backdrop-blur-md">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-4 md:px-10">
+          <Logo />
+
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-lg font-semibold text-primary">B</div>
-            <div>
-              <p className="text-sm font-semibold">Bhooter Bari</p>
-              <p className="text-xs text-muted">Bhooter Bari • Encrypted chat rooms</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
+            <Link
+              href="/privacy"
+              className="text-sm text-muted transition-colors hover:text-foreground"
+            >
+              Privacy
+            </Link>
             <Link href="/create">
-              <Button variant="secondary" size="sm">Create room</Button>
+              <Button variant="primary" size="sm">
+                Create a room
+              </Button>
             </Link>
             <ThemeToggle />
           </div>
-        </header>
+        </div>
+      </header>
 
+      <main className="pb-16">
         <Hero />
-        <Features />
-        <HowItWorks />
 
-        <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <Card className="space-y-4">
-            <Badge variant="success">Privacy check</Badge>
-            <h3 className="text-2xl font-semibold">Encryption stays client-side.</h3>
-            <p className="text-muted">
-              Keys are generated in your browser and shared only through the invite link fragment. Bhooter Bari never sees readable content, even in transit.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Link href="/create?type=group">
-                <Button>Start a private room</Button>
-              </Link>
-              <Link href="/privacy">
-                <Button variant="ghost">Read privacy policy</Button>
-              </Link>
-            </div>
-          </Card>
-          <Card variant="glass" className="space-y-3">
-            <p className="text-xs uppercase tracking-[0.4em] text-muted">What people love</p>
-            <div className="space-y-3 text-sm text-muted">
-              <p>“Feels like Signal, but faster to spin up for groups.”</p>
-              <p>“The timer and panic button make sensitive chats finally feel safe.”</p>
-              <p>“We onboard new collaborators without exposing accounts.”</p>
-            </div>
-          </Card>
-        </section>
+        <div className="mx-auto max-w-6xl space-y-24 px-6 py-24 md:px-10">
+          <Features />
+          <HowItWorks />
+          <EncryptionCTA />
+          <Footer />
+        </div>
+      </main>
 
-        <Footer />
-      </div>
       <LandingMusicControl />
-    </main>
+    </>
   )
 }

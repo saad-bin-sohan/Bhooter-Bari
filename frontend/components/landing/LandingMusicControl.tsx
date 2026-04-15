@@ -481,21 +481,21 @@ export const LandingMusicControl = () => {
       <div ref={playerMountRef} aria-hidden className="pointer-events-none fixed -left-[9999px] top-0 h-0 w-0 overflow-hidden" />
 
       {autoplayBlocked && !isPlaying && isReady && (
-        <div className="pointer-events-none fixed bottom-24 right-6 z-50 rounded-full border border-border/70 bg-surface/95 px-3 py-1 text-[11px] font-semibold tracking-wide text-muted shadow-soft backdrop-blur md:right-8">
+        <div className="pointer-events-none fixed bottom-24 right-6 z-50 rounded-md border border-border/70 bg-surface/95 px-3 py-1 text-[11px] font-medium text-muted shadow-sm backdrop-blur md:right-8">
           Tap to play
         </div>
       )}
 
       {isHoldingVolume && (
-        <div className="pointer-events-none fixed bottom-24 right-6 z-50 flex w-14 flex-col items-center gap-2 rounded-3xl border border-border/70 bg-surface/95 px-3 py-3 text-xs font-semibold text-muted shadow-card backdrop-blur md:right-8">
+        <div className="pointer-events-none fixed bottom-24 right-6 z-50 flex w-14 flex-col items-center gap-2 rounded-2xl border border-border/70 bg-surface/95 px-3 py-3 text-xs font-medium text-muted shadow-lg backdrop-blur md:right-8">
           <span>{volume}%</span>
-          <div className="relative h-28 w-2 rounded-full bg-surface3">
+          <div className="relative h-28 w-2 rounded-full bg-surface-3">
             <div
-              className="absolute inset-x-0 bottom-0 rounded-full bg-gradient-to-t from-primary to-primary-2"
+              className="absolute inset-x-0 bottom-0 rounded-full bg-primary"
               style={{ height: `${indicatorPosition}%` }}
             />
             <div
-              className="absolute left-1/2 h-3.5 w-3.5 rounded-full border border-border/70 bg-surface shadow-soft"
+              className="absolute left-1/2 h-3.5 w-3.5 rounded-full border border-border/70 bg-surface shadow-xs"
               style={{ bottom: `${indicatorPosition}%`, transform: 'translate(-50%, 50%)' }}
             />
           </div>
@@ -513,14 +513,14 @@ export const LandingMusicControl = () => {
         onKeyDown={handleKeyDown}
         onContextMenu={event => event.preventDefault()}
         className={cn(
-          'fixed bottom-6 right-6 z-50 flex h-14 w-14 touch-none select-none items-center justify-center rounded-full border border-border/70 bg-gradient-to-b from-surface/95 to-surface2/90 text-foreground shadow-card backdrop-blur transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background md:right-8',
+          'focus-ring fixed bottom-6 right-6 z-50 flex h-14 w-14 touch-none select-none items-center justify-center rounded-xl border border-border/70 bg-surface/95 text-foreground shadow-lg backdrop-blur transition-colors duration-150 md:right-8',
           'hover:scale-[1.03] active:scale-[0.98]',
           !isReady && 'opacity-80',
-          isPlaying && 'text-primary'
+          isPlaying && 'bg-surface text-primary'
         )}
       >
         <PlaybackIcon className="h-5 w-5" />
-        <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border border-border/70 bg-surface text-foreground shadow-soft">
+        <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border border-border/70 bg-surface text-foreground shadow-xs">
           <VolumeIcon className="h-3.5 w-3.5" />
         </span>
       </button>

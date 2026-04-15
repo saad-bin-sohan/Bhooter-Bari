@@ -1,85 +1,133 @@
 'use client'
+
 import Link from 'next/link'
-import { Badge } from '../ui/Badge'
+import { motion } from 'framer-motion'
+import { EyeOff, ShieldCheck, Timer } from 'lucide-react'
 import { Button } from '../ui/Button'
-import { Card } from '../ui/Card'
-import { ShieldCheck, Timer, Sparkles, ArrowRight } from 'lucide-react'
 
 export const Hero = () => {
   return (
-    <section className="relative overflow-hidden rounded-[32px] border border-border/60 bg-surface px-6 py-12 shadow-card md:px-10">
-      <div className="absolute inset-0 mesh opacity-70" />
-      <div className="absolute -top-24 right-0 h-64 w-64 rounded-full bg-primary/20 blur-3xl" />
-      <div className="absolute bottom-0 left-0 h-64 w-64 rounded-full bg-accent/20 blur-3xl" />
-      <div className="relative grid gap-10 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="space-y-6">
-          <Badge variant="accent">Invite-only · Anonymous · Ephemeral</Badge>
-          <h1 className="text-balance text-4xl font-semibold md:text-6xl">
-            Bhooter Bari — private stories, no trace left behind.
-          </h1>
-          <p className="text-lg text-muted md:text-xl">
-            A privacy-first chat space with end-to-end encryption, burn-after-read controls, and real-time moderation tools. Create a room in seconds and share the key only with people you trust.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/create?type=group">
-              <Button size="lg">
-                Create a group room <ArrowRight className="h-4 w-4" />
+    <section className="px-6 pb-10 pt-16 md:px-10 md:pb-14 md:pt-20 lg:pb-16 lg:pt-24">
+      <div className="grid gap-14 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+        <div className="max-w-2xl space-y-7">
+          <motion.p
+            className="stripe text-sm text-muted font-mono"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: 'easeOut' }}
+          >
+            Invite-only · Encrypted · Ephemeral
+          </motion.p>
+
+          <motion.h1
+            className="text-balance font-display text-5xl font-bold text-foreground md:text-6xl lg:text-7xl"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+          >
+            <span className="block">Private rooms.</span>
+            <span className="block text-accent">No trace left.</span>
+          </motion.h1>
+
+          <motion.p
+            className="max-w-md text-lg text-muted"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1, ease: 'easeOut' }}
+          >
+            A privacy-first chat space with end-to-end encryption and automatic expiry. Create a
+            room in seconds.
+          </motion.p>
+
+          <motion.div
+            className="flex flex-wrap items-center gap-3"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2, ease: 'easeOut' }}
+          >
+            <Link href="/create">
+              <Button variant="primary" size="lg">
+                Create a room
               </Button>
             </Link>
-            <Link href="/create?type=direct">
-              <Button variant="secondary" size="lg">
-                Create a 1-1 room
-              </Button>
+            <Link
+              href="#how-it-works"
+              className="text-sm text-muted underline underline-offset-4 transition-colors hover:text-foreground"
+            >
+              How it works →
             </Link>
-          </div>
-          <div className="flex flex-wrap gap-4 text-sm text-muted">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-primary" />
-              End-to-end encryption
+          </motion.div>
+
+          <motion.div
+            className="flex flex-wrap items-center gap-x-6 gap-y-2"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3, ease: 'easeOut' }}
+          >
+            <div className="flex items-center gap-1.5 text-xs text-muted">
+              <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+              End-to-end encrypted
             </div>
-            <div className="flex items-center gap-2">
-              <Timer className="h-4 w-4 text-primary" />
-              1-60 minute timers
+            <div className="flex items-center gap-1.5 text-xs text-muted">
+              <Timer className="h-3.5 w-3.5 text-primary" />
+              Rooms expire in ≤60 min
             </div>
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
-              Panic wipe & burn after read
+            <div className="flex items-center gap-1.5 text-xs text-muted">
+              <EyeOff className="h-3.5 w-3.5 text-primary" />
+              No accounts, no logs
             </div>
-          </div>
+          </motion.div>
         </div>
-        <div className="space-y-4">
-          <Card className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-widest text-muted">Live preview</p>
-                <p className="text-lg font-semibold">Bhooter Bari Room</p>
-              </div>
-              <Badge>Encrypted</Badge>
+
+        <motion.div
+          className="hidden lg:flex lg:flex-col lg:justify-center"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.55, delay: 0.15, ease: 'easeOut' }}
+        >
+          <div className="space-y-3 px-4">
+            <div className="flex justify-center">
+              <span className="cipher rounded-md bg-surface-2 px-3 py-1 text-xs text-muted">
+                Room expires in 14m 08s
+              </span>
             </div>
-            <div className="space-y-3">
-              <div className="rounded-2xl bg-surface2 px-3 py-2 text-sm text-muted">
-                System: Room expires in 14m 08s
+
+            <div className="flex max-w-xs items-end gap-2">
+              <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-mono text-primary">
+                G
               </div>
-              <div className="rounded-3xl bg-gradient-to-br from-primary to-primary-2 px-4 py-3 text-sm text-primary-foreground shadow-glow">
-                I just shared the link. The key never touches the server.
-              </div>
-              <div className="rounded-3xl bg-surface2 px-4 py-3 text-sm">
-                Perfect. I can see the typing indicator already.
+              <div className="rounded-2xl rounded-bl-sm border border-border/60 bg-surface px-4 py-2.5 text-sm text-foreground shadow-xs">
+                I just shared the link.
               </div>
             </div>
-            <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-surface px-3 py-2 text-xs text-muted">
-              Typing… encrypted locally
+
+            <div className="ml-auto flex max-w-xs justify-end">
+              <div className="rounded-2xl rounded-br-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground shadow-sm">
+                The key never touches the server.
+              </div>
             </div>
-          </Card>
-          <Card variant="glass" className="space-y-2">
-            <p className="text-xs uppercase tracking-[0.3em] text-muted">Trust stack</p>
-            <div className="flex flex-wrap gap-2">
+
+            <div className="flex items-center gap-2 pl-9">
+              <div className="flex items-center gap-1">
+                <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-muted" />
+                <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-muted [animation-delay:200ms]" />
+                <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-muted [animation-delay:400ms]" />
+              </div>
+              <span className="text-xs text-muted">typing…</span>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2 pl-1">
               {['AES-GCM', 'Socket.io', 'No accounts', 'Invite keys'].map(item => (
-                <Badge key={item}>{item}</Badge>
+                <span
+                  key={item}
+                  className="cipher rounded-md border border-border/50 bg-surface-2 px-2 py-0.5 text-xs text-muted"
+                >
+                  {item}
+                </span>
               ))}
             </div>
-          </Card>
-        </div>
+          </div>
+        </motion.div>
       </div>
     </section>
   )
