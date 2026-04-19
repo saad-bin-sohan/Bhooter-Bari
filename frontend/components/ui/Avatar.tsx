@@ -22,7 +22,7 @@ export const Avatar = ({ size = 'md', label, color, online, className, ...rest }
       {online !== undefined && (
         <span
           className={cn(
-            'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-surface',
+            'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background',
             online ? 'bg-success' : 'bg-surface3'
           )}
         />

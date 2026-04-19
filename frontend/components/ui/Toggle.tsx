@@ -24,7 +24,7 @@ export const Toggle = ({ label, value, onChange, description }: Props) => {
       <span
         className={cn(
           'relative h-6 w-10 rounded-full border border-border transition-all duration-200',
-          value ? 'bg-primary' : 'bg-surface-3'
+          value ? 'border-transparent bg-primary' : 'bg-surface-3'
         )}
       >
         <span

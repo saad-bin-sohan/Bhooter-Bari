@@ -1,16 +1,18 @@
 'use client'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { io, Socket } from 'socket.io-client'
-import { Card } from '../../../components/ui/Card'
-import { Input } from '../../../components/ui/Input'
-import { Textarea } from '../../../components/ui/Textarea'
+import { AnimatePresence, motion } from 'framer-motion'
+import { X } from 'lucide-react'
 import { Button } from '../../../components/ui/Button'
-import { Toggle } from '../../../components/ui/Toggle'
-import { Badge } from '../../../components/ui/Badge'
+import { Input } from '../../../components/ui/Input'
 import { Modal } from '../../../components/ui/Modal'
+import { Badge } from '../../../components/ui/Badge'
 import { RoomHeader } from '../../../components/room/RoomHeader'
-import { MemberList } from '../../../components/room/MemberList'
+import { RoomSidebar } from '../../../components/room/RoomSidebar'
+import { JoinModal } from '../../../components/room/JoinModal'
+import { MessageComposer } from '../../../components/room/MessageComposer'
 import { MessageBubble } from '../../../components/chat/MessageBubble'
 import { TypingIndicator } from '../../../components/chat/TypingIndicator'
 import { apiRequest } from '../../../lib/api'
@@ -19,7 +21,6 @@ import { decryptFile, decryptText, encryptFile, encryptText, importRoomKey } fro
 import { apiBase } from '../../../lib/config'
 import { useToast } from '../../../lib/hooks/useToast'
 import { useUiState } from '../../../lib/hooks/useUiState'
-import { ArrowLeft, Link2, MessageCircleWarning } from 'lucide-react'
 
 const relativeTime = (expiresAt?: string | Date, now?: number | null) => {
   if (!expiresAt || now == null) return ''
@@ -125,6 +126,7 @@ export default function RoomPage() {
   const creatorSecretRef = useRef<string | null>(null)
   const seenRef = useRef<Set<string>>(new Set())
   const destructTimers = useRef<Map<string, NodeJS.Timeout>>(new Map())
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const loadKey = async () => {
@@ -246,6 +248,10 @@ export default function RoomPage() {
       setMentionQuery('')
     }
   }, [input])
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
 
   const addSystemMessage = (text: string) => {
     if (!room) return
@@ -470,7 +476,7 @@ export default function RoomPage() {
   const handleAttachment = async (file: File) => {
     if (!room || !roomKey || !memberToken) return
     if (file.size > 10 * 1024 * 1024) {
-      alert('Attachments up to 10MB only')
+      pushToast({ title: 'File too large', message: 'Attachments are limited to 10 MB.', variant: 'warning' })
       return
     }
     const buffer = await file.arrayBuffer()
@@ -600,250 +606,239 @@ export default function RoomPage() {
   }
 
   if (expired) return (
-    <main className="min-h-screen flex items-center justify-center px-6">
-      <Card className="max-w-md w-full space-y-4 text-center">
-        <Badge variant="warning">Room expired</Badge>
-        <h2 className="text-2xl font-semibold">Room unavailable</h2>
-        <p className="text-muted">This room expired or was deleted.</p>
-        <Button onClick={() => router.push('/')}>Go home</Button>
-      </Card>
-    </main>
-  )
-
-  const avatar = avatarSeed ? avatarFromSeed(avatarSeed) : { icon: 'USER', color: '#94a3b8' }
-
-  const sidebarContent = (
-    <div className="space-y-4">
-      <Card className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Members</h3>
-          <Badge>{members.filter(m => m.online).length} online</Badge>
-        </div>
-        <MemberList members={members} isCreator={isCreator} memberSessionId={memberSessionId} onMute={muteMember} onKick={kickMember} />
-      </Card>
-      {isCreator && (
-        <Card className="space-y-3">
-          <h3 className="text-lg font-semibold">Room controls</h3>
-          <Toggle label="Allow attachments" value={allowAttachments} onChange={val => toggleSetting('allowAttachments', val)} />
-          <Toggle label="Allow links" value={allowLinks} onChange={val => toggleSetting('allowLinks', val)} />
-          <Toggle label="Burn after read" value={!!room?.burnAfterReadEnabled} onChange={val => toggleSetting('burnAfterReadEnabled', val)} />
-          <Toggle label="Self-destruct messages" value={!!room?.selfDestructModeEnabled} onChange={val => toggleSetting('selfDestructModeEnabled', val)} />
-          <Toggle label="Panic button" value={!!room?.panicButtonEnabled} onChange={val => toggleSetting('panicButtonEnabled', val)} />
-          <Toggle label="Screenshot warning" value={!!room?.screenshotWarningEnabled} onChange={val => toggleSetting('screenshotWarningEnabled', val)} />
-          <Button variant="secondary" onClick={deleteRoom}>Delete room now</Button>
-        </Card>
-      )}
-      {isCreator && (
-        <Card className="space-y-3">
-          <h3 className="text-lg font-semibold">Timer</h3>
-          <div className="flex items-center gap-3">
-            <Input type="number" min={1} max={60} value={timerMinutes} onChange={e => setTimerMinutes(Number(e.target.value))} />
-            <Button onClick={updateTimer}>Update</Button>
-          </div>
-        </Card>
-      )}
-      {isCreator && pendingRequests.length > 0 && (
-        <Card className="space-y-2">
-          <h3 className="text-lg font-semibold">Join requests</h3>
-          {pendingRequests.map(r => (
-            <div key={r.requestId} className="flex items-center justify-between rounded-2xl border border-border/60 bg-surface px-3 py-3 shadow-soft">
-              <div>
-                <div className="text-sm font-semibold">{r.nickname}</div>
-                <div className="text-xs text-muted">Awaiting approval</div>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="secondary" size="sm" onClick={() => approveRequest(r.requestId)}>Approve</Button>
-                <Button variant="ghost" size="sm" onClick={() => denyRequest(r.requestId)}>Deny</Button>
-              </div>
-            </div>
-          ))}
-        </Card>
-      )}
-      <Card className="space-y-3">
-        <h3 className="text-lg font-semibold">Report</h3>
-        <Textarea
-          className="min-h-[120px]"
-          placeholder="Share concerns or abuse details"
-          value={reportReason}
-          onChange={e => setReportReason(e.target.value)}
-        />
-        <Button onClick={submitReport}>Report abuse</Button>
-      </Card>
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 px-6">
+      <div className="space-y-3 text-center">
+        <p className="stripe mx-auto inline-block text-sm font-medium text-muted">
+          Room unavailable
+        </p>
+        <h1 className="font-display text-3xl font-semibold text-foreground">
+          This room is gone.
+        </h1>
+        <p className="mx-auto max-w-sm text-base text-muted">
+          This room has expired or been deleted. Rooms last at most 60 minutes and vanish without a trace.
+        </p>
+      </div>
+      <div className="flex items-center gap-4">
+        <Button type="button" variant="primary" onClick={() => router.push('/')}>
+          Back home
+        </Button>
+        <Link
+          href="/create"
+          className="text-sm text-muted underline underline-offset-4 transition-colors hover:text-foreground"
+        >
+          Create a new room →
+        </Link>
+      </div>
     </div>
   )
+
+  const avatar = avatarSeed ? avatarFromSeed(avatarSeed) : { icon: 'USER', color: '#6c7ae0' }
+  void avatar
 
   return (
     <>
       <Modal open={joinOpen}>
-        <div className="space-y-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h3 className="text-2xl font-semibold">Join room</h3>
-              <p className="text-sm text-muted">{room?.name || 'Invite-only room'}</p>
-            </div>
-            <Badge>{room?.type === 'direct' ? '1-1' : 'Group'}</Badge>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/60 bg-surface2 px-3 py-3">
-            <div className="h-14 w-14 rounded-full flex items-center justify-center text-lg font-semibold text-white" style={{ background: avatar.color }}>
-              {avatar.icon}
-            </div>
-            <div className="flex-1 space-y-2">
-              <Input placeholder="Nickname" value={nickname} onChange={e => setNickname(e.target.value)} />
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="ghost" size="sm" onClick={() => setAvatarSeed(randomAvatar())}>Shuffle avatar</Button>
-                {room?.hasPassword && <Input placeholder="Room password" type="password" value={password} onChange={e => setPassword(e.target.value)} />}
-              </div>
-            </div>
-          </div>
-          {room?.screenshotWarningEnabled && (
-            <div className="flex items-center gap-2 rounded-2xl border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning-foreground">
-              <MessageCircleWarning className="h-4 w-4" />
-              Screenshot safety is not guaranteed.
-            </div>
-          )}
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-muted">Expires in {relativeTime(room?.expiresAt, clock)}</div>
-            <Button onClick={handleJoin} disabled={joinState === 'pending'}>
-              {joinState === 'pending' ? 'Waiting...' : 'Join'}
-            </Button>
-          </div>
-          {joinState === 'pending' && <div className="text-sm text-muted">Awaiting host approval if required.</div>}
-          {joinError && <div className="rounded-2xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{joinError}</div>}
-        </div>
+        <JoinModal
+          room={room}
+          clock={clock}
+          avatarSeed={avatarSeed}
+          nickname={nickname}
+          password={password}
+          joinState={joinState}
+          joinError={joinError}
+          onNicknameChange={setNickname}
+          onPasswordChange={setPassword}
+          onShuffleAvatar={() => setAvatarSeed(randomAvatar())}
+          onJoin={handleJoin}
+        />
       </Modal>
-
-      <main className="min-h-screen px-4 py-8 md:px-8">
-        <div className="mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <section className="space-y-4">
-            <RoomHeader
-              title={room?.name || 'Ghost room'}
-              subtitle={`Expires in ${relativeTime(room?.expiresAt, clock)}`}
-              typeLabel={room?.type === 'direct' ? '1-1' : 'Group'}
-              tags={room?.tags || []}
-              allowAttachments={!!room?.allowAttachments}
-              onToggleSidebar={() => setSidebarOpen(true)}
-            />
-            <Card variant="glass" className="space-y-3 text-sm text-muted">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge>End-to-end encrypted</Badge>
-                {room?.requireApproval && <Badge variant="warning">Approval required</Badge>}
-                {room?.burnAfterReadEnabled && <Badge variant="accent">Burn after read</Badge>}
-                {room?.selfDestructModeEnabled && <Badge variant="danger">Self-destruct</Badge>}
-              </div>
-              <p>
-                Rooms expire within sixty minutes. Messages and attachments are hard-deleted at expiry or when the host deletes the room. Only nicknames and avatars are visible; IPs stay server-side for safety. Keep your key safe in the URL hash.
-              </p>
-            </Card>
-
-            <Card className="h-[60vh] space-y-4 overflow-y-auto p-6">
-              {messages.map(msg => {
-                const mine = msg.senderSessionId === memberSessionId
-                const parent = messages.find(m => m.id === msg.threadParentId)
-                return (
-                  <MessageBubble
-                    key={msg.id}
-                    message={msg}
-                    mine={mine}
-                    isCreator={isCreator}
-                    parent={parent}
-                    onReact={emoji => addReaction(msg.id, emoji)}
-                    onReply={() => setReplyTo(msg)}
-                    onEdit={() => beginEdit(msg)}
-                    onDelete={() => deleteMessage(msg.id)}
-                    onDownload={downloadAttachment}
-                  />
-                )
-              })}
-              <TypingIndicator names={typingNames} />
-            </Card>
-
-            <Card className="space-y-3 relative">
-              {replyTo && (
-                <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-surface2 px-3 py-2 text-xs text-muted">
-                  <span>Replying to {replyTo.sender?.nickname || 'message'}: {replyTo.plaintext?.slice(0, 80)}</span>
-                  <Button variant="ghost" size="sm" onClick={() => setReplyTo(null)}>Clear</Button>
-                </div>
-              )}
-              <div className="space-y-3">
-                <div className="relative">
-                  <Input
-                    value={input}
-                    onChange={e => {
-                      setInput(e.target.value)
-                      startTyping()
-                    }}
-                    placeholder={allowLinks ? 'Type a message' : 'Links are disabled'}
-                    disabled={!allowLinks}
-                  />
-                  {mentionQuery && mentionCandidates.length > 0 && (
-                    <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-2xl border border-border/60 bg-surface p-2 shadow-card">
-                      {mentionCandidates.map(member => (
-                        <button
-                          key={member.id}
-                          onClick={() => insertMention(member.nickname)}
-                          className="w-full rounded-xl px-3 py-2 text-left text-sm text-muted hover:bg-surface2 hover:text-foreground"
-                        >
-                          @{member.nickname}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button onClick={sendMessage}>Send</Button>
-                  <label className={`inline-flex cursor-pointer items-center gap-2 rounded-full border border-border/70 bg-surface2 px-4 py-2 text-sm text-muted transition hover:text-foreground ${!allowAttachments ? 'pointer-events-none opacity-60' : ''}`}>
-                    <Link2 className="h-4 w-4" /> Attach
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={e => {
-                        const file = e.target.files?.[0]
-                        if (file) handleAttachment(file)
-                      }}
-                      disabled={!allowAttachments}
-                    />
-                  </label>
-                  {room?.panicButtonEnabled && <Button variant="danger" onClick={panic}>Panic</Button>}
-                </div>
-              </div>
-            </Card>
-
-            {room?.rules && (
-              <Card>
-                <p className="text-sm text-muted whitespace-pre-wrap">{room.rules}</p>
-              </Card>
-            )}
-          </section>
-
-          <aside className="hidden lg:block">{sidebarContent}</aside>
-        </div>
-      </main>
-
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 flex lg:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
-          <div className="relative ml-auto h-full w-full max-w-sm overflow-y-auto bg-surface p-4 shadow-card">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Room details</h3>
-              <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(false)}>
-                <ArrowLeft className="h-4 w-4" /> Close
-              </Button>
-            </div>
-            {sidebarContent}
-          </div>
-        </div>
-      )}
 
       <Modal open={!!editMessage} onClose={() => setEditMessage(null)}>
-        <div className="space-y-3">
-          <h3 className="text-xl font-semibold">Edit message</h3>
-          <Input value={editText} onChange={e => setEditText(e.target.value)} />
+        <div className="space-y-4">
+          <h2 className="font-display text-lg font-semibold text-foreground">
+            Edit message
+          </h2>
+          <Input
+            value={editText}
+            onChange={e => setEditText(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                saveEdit()
+              }
+            }}
+            autoFocus
+          />
           <div className="flex gap-2">
-            <Button onClick={saveEdit}>Save</Button>
-            <Button variant="ghost" onClick={() => setEditMessage(null)}>Cancel</Button>
+            <Button type="button" variant="primary" onClick={saveEdit}>
+              Save changes
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setEditMessage(null)}>
+              Cancel
+            </Button>
           </div>
         </div>
       </Modal>
+
+      <div className="flex h-screen flex-col overflow-hidden bg-background">
+        <RoomHeader
+          title={room?.name || 'Ghost room'}
+          subtitle={`Expires in ${relativeTime(room?.expiresAt, clock)}`}
+          typeLabel={room?.type === 'direct' ? '1-1' : 'Group'}
+          tags={room?.tags || []}
+          allowAttachments={!!room?.allowAttachments}
+          onToggleSidebar={() => setSidebarOpen(true)}
+        />
+
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+          <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+            <div className="flex flex-shrink-0 flex-wrap items-center gap-2 border-b border-border/40 bg-surface/50 px-4 py-2">
+              <Badge>End-to-end encrypted</Badge>
+              {room?.requireApproval && (
+                <Badge variant="warning">Approval required</Badge>
+              )}
+              {room?.burnAfterReadEnabled && (
+                <Badge variant="accent">Burn after read</Badge>
+              )}
+              {room?.selfDestructModeEnabled && (
+                <Badge variant="danger">Self-destruct</Badge>
+              )}
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-4">
+              <div className="mx-auto max-w-2xl space-y-1.5">
+                {messages.map(msg => {
+                  const mine = msg.senderSessionId === memberSessionId
+                  const parent = messages.find(m => m.id === msg.threadParentId)
+                  return (
+                    <MessageBubble
+                      key={msg.id}
+                      message={msg}
+                      mine={mine}
+                      isCreator={isCreator}
+                      parent={parent}
+                      onReact={emoji => addReaction(msg.id, emoji)}
+                      onReply={() => setReplyTo(msg)}
+                      onEdit={() => beginEdit(msg)}
+                      onDelete={() => deleteMessage(msg.id)}
+                      onDownload={downloadAttachment}
+                    />
+                  )
+                })}
+                <TypingIndicator names={typingNames} />
+                <div ref={messagesEndRef} />
+              </div>
+            </div>
+
+            {room?.rules && (
+              <div className="flex-shrink-0 border-t border-border/40 bg-surface/50 px-4 py-2">
+                <p className="cipher whitespace-pre-wrap text-xs text-muted/80">
+                  {room.rules}
+                </p>
+              </div>
+            )}
+
+            <MessageComposer
+              input={input}
+              replyTo={replyTo}
+              mentionCandidates={mentionCandidates}
+              mentionQuery={mentionQuery}
+              allowLinks={allowLinks}
+              allowAttachments={allowAttachments}
+              panicButtonEnabled={!!room?.panicButtonEnabled}
+              onInputChange={setInput}
+              onClearReply={() => setReplyTo(null)}
+              onInsertMention={insertMention}
+              onSend={sendMessage}
+              onStartTyping={startTyping}
+              onAttach={handleAttachment}
+              onPanic={panic}
+            />
+          </main>
+
+          <aside className="hidden w-72 flex-shrink-0 border-l border-border/50 lg:flex lg:flex-col">
+            <RoomSidebar
+              members={members}
+              isCreator={isCreator}
+              memberSessionId={memberSessionId}
+              allowAttachments={allowAttachments}
+              allowLinks={allowLinks}
+              room={room}
+              timerMinutes={timerMinutes}
+              pendingRequests={pendingRequests}
+              reportReason={reportReason}
+              onMute={muteMember}
+              onKick={kickMember}
+              onToggleSetting={toggleSetting}
+              onUpdateTimer={updateTimer}
+              onTimerChange={setTimerMinutes}
+              onDeleteRoom={deleteRoom}
+              onApprove={approveRequest}
+              onDeny={denyRequest}
+              onReportChange={setReportReason}
+              onReport={submitReport}
+            />
+          </aside>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <>
+            <motion.div
+              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              onClick={() => setSidebarOpen(false)}
+            />
+            <motion.div
+              className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xs flex-col border-l border-border/60 bg-surface lg:hidden"
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+            >
+              <div className="flex h-14 flex-shrink-0 items-center justify-between border-b border-border/50 px-4">
+                <span className="cipher text-sm font-medium text-muted">Room details</span>
+                <Button
+                  type="button"
+                  variant="icon"
+                  size="icon"
+                  onClick={() => setSidebarOpen(false)}
+                  aria-label="Close sidebar"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <RoomSidebar
+                  members={members}
+                  isCreator={isCreator}
+                  memberSessionId={memberSessionId}
+                  allowAttachments={allowAttachments}
+                  allowLinks={allowLinks}
+                  room={room}
+                  timerMinutes={timerMinutes}
+                  pendingRequests={pendingRequests}
+                  reportReason={reportReason}
+                  onMute={muteMember}
+                  onKick={kickMember}
+                  onToggleSetting={toggleSetting}
+                  onUpdateTimer={updateTimer}
+                  onTimerChange={setTimerMinutes}
+                  onDeleteRoom={deleteRoom}
+                  onApprove={approveRequest}
+                  onDeny={denyRequest}
+                  onReportChange={setReportReason}
+                  onReport={submitReport}
+                />
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </>
   )
 }

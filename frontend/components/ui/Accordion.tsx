@@ -17,7 +17,7 @@ export const Accordion = ({ items, className }: Props) => {
   return (
     <div className={cn('space-y-2', className)}>
       {items.map(item => (
-        <details key={item.id} className="group rounded-2xl border border-border/70 bg-surface px-4 py-3 shadow-soft">
+        <details key={item.id} className="group rounded-xl border border-border/60 bg-surface px-4 py-3 shadow-sm transition-all duration-150">
           <summary className="cursor-pointer list-none font-semibold text-foreground">
             <span>{item.title}</span>
           </summary>

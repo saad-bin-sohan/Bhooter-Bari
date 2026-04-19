@@ -30,7 +30,7 @@ export const Dropdown = ({ trigger, children, align = 'left', className }: Props
       {open && (
         <div
           className={cn(
-            'absolute z-50 mt-2 min-w-[180px] rounded-2xl border border-border/70 bg-surface p-2 shadow-card',
+            'absolute z-50 mt-2 min-w-[180px] rounded-xl border border-border/60 bg-surface p-2 shadow-lg transition-none',
             align === 'right' ? 'right-0' : 'left-0',
             className
           )}
