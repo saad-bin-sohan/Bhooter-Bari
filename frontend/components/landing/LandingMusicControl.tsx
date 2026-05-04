@@ -336,9 +336,21 @@ export const LandingMusicControl = () => {
     const initializePlayer = async () => {
       try {
         const YT = await loadYouTubeApi()
-        if (cancelled || !playerMountRef.current) return
+        // AFTER
 
-        const player = new YT.Player(playerMountRef.current, {
+        if (cancelled || !playerMountRef.current) return
+        // Create a non-React-managed child element for YouTube to own.
+        // The YouTube IFrame API physically replaces whatever element you pass it with
+        // an <iframe>. If we pass the React-managed div directly, React cannot remove
+        // it on unmount (it's been detached from the DOM), which throws a
+        // NotFoundError and crashes page navigation.
+        // By passing a programmatically created child, YouTube replaces the child,
+        // the outer React-managed div stays intact, and React unmounts cleanly.
+        const mountTarget = document.createElement('div')
+        playerMountRef.current.appendChild(mountTarget)
+
+        const player = new YT.Player(mountTarget, {
+
           width: '0',
           height: '0',
           videoId: VIDEO_ID,
